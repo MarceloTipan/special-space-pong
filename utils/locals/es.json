@@ -1,0 +1,72 @@
+{
+  "menu": {
+    "start": "JUGAR",
+    "how_to_play": "COMO JUGAR",
+    "about_us": "CREDITOS",
+    "exit": "SALIR",
+    "highscores": "RECORDS"
+  },
+  "instructions": {
+    "title": "COMO JUGAR",
+    "back": "VOLVER",
+    "line_move": "Mueve la raqueta con tu mano frente a la camara",
+    "line_goal": "Golpea la pelota y no dejes que pase",
+    "line_lives": "Tienes 3 vidas, el juego sube de dificultad",
+    "line_back": "Presiona ESC para volver al menu"
+  },
+  "credits": {
+    "title": "CREDITOS",
+    "back": "VOLVER",
+    "roles": {
+      "development": "DESARROLLO",
+      "original_team": "EQUIPO ORIGINAL",
+      "thanks": "AGRADECIMIENTOS"
+    },
+    "thanks_text": "Gracias por jugar!"
+  },
+  "game": {
+    "score": "Puntos: {points}",
+    "player_wins": "Jugador {player} gana",
+    "paused": "PAUSA",
+    "game_over": "GAME OVER",
+    "hud_points": "PUNTOS : {points:04d}",
+    "hud_level": "NIVEL",
+    "level_won": "NIVEL SUPERADO",
+    "level_lost": "NIVEL PERDIDO",
+    "retry": "REINTENTAR",
+    "continue": "CONTINUAR",
+    "victory": "VICTORIA"
+  },
+  "loading": {
+    "text": "CARGANDO..."
+  },
+  "common": {
+    "back": "VOLVER",
+    "on": "ON",
+    "off": "OFF"
+  },
+  "language_name": "Español",
+  "settings": {
+    "title": "CONFIGURACION",
+    "volume": "VOLUMEN",
+    "language": "IDIOMA",
+    "fullscreen": "PANTALLA COMPLETA",
+    "difficulty": "DIFICULTAD"
+  },
+  "highscores": {
+    "title": "MEJORES PUNTAJES",
+    "empty": "AUN NO HAY RECORDS",
+    "level_short": "NV",
+    "your_score": "TU PUNTAJE: {points}"
+  },
+  "name_entry": {
+    "title": "NUEVO RECORD",
+    "score": "PUNTAJE: {points}",
+    "hint": "FLECHAS PARA ELEGIR - ENTER PARA GUARDAR"
+  },
+  "difficulty": {
+    "easy": "FACIL",
+    "normal": "NORMAL",
+    "hard": "DIFICIL"
+  }
+}

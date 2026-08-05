@@ -1,0 +1,72 @@
+{
+  "menu": {
+    "start": "PLAY",
+    "how_to_play": "HOW TO PLAY",
+    "about_us": "CREDITS",
+    "exit": "EXIT",
+    "highscores": "HIGH SCORES"
+  },
+  "instructions": {
+    "title": "HOW TO PLAY",
+    "back": "BACK",
+    "line_move": "Move the paddle with your hand in front of the camera",
+    "line_goal": "Hit the ball and don't let it pass",
+    "line_lives": "You have 3 lives, difficulty increases over time",
+    "line_back": "Press ESC to return to the menu"
+  },
+  "credits": {
+    "title": "CREDITS",
+    "back": "BACK",
+    "roles": {
+      "development": "DEVELOPMENT",
+      "original_team": "ORIGINAL TEAM",
+      "thanks": "SPECIAL THANKS"
+    },
+    "thanks_text": "Thanks for playing!"
+  },
+  "game": {
+    "score": "Score: {points}",
+    "player_wins": "Player {player} wins",
+    "paused": "PAUSED",
+    "game_over": "GAME OVER",
+    "hud_points": "SCORE : {points:04d}",
+    "hud_level": "LEVEL",
+    "level_won": "LEVEL COMPLETE",
+    "level_lost": "LEVEL FAILED",
+    "retry": "RETRY",
+    "continue": "CONTINUE",
+    "victory": "VICTORY"
+  },
+  "loading": {
+    "text": "LOADING..."
+  },
+  "common": {
+    "back": "BACK",
+    "on": "ON",
+    "off": "OFF"
+  },
+  "language_name": "English",
+  "settings": {
+    "title": "SETTINGS",
+    "volume": "VOLUME",
+    "language": "LANGUAGE",
+    "fullscreen": "FULLSCREEN",
+    "difficulty": "DIFFICULTY"
+  },
+  "highscores": {
+    "title": "HIGH SCORES",
+    "empty": "NO RECORDS YET",
+    "level_short": "LV",
+    "your_score": "YOUR SCORE: {points}"
+  },
+  "name_entry": {
+    "title": "NEW RECORD",
+    "score": "SCORE: {points}",
+    "hint": "ARROWS TO SELECT - ENTER TO SAVE"
+  },
+  "difficulty": {
+    "easy": "EASY",
+    "normal": "NORMAL",
+    "hard": "HARD"
+  }
+}
