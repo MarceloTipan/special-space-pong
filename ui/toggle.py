@@ -1,50 +1,36 @@
-#!/usr/bin/env python
-# -*- coding: utf-8 -*-
+"""Toggle switch (a pill with a sliding knob) for boolean settings.
 
-"""! @brief Toggle switch (píldora con perilla deslizante) para booleanos."""
-
-##
-# @file toggle.py
-#
-# @brief Define la clase Toggle.
-#
-# @section description_toggle Descripción
-# Interruptor visual de encendido/apagado: una píldora cuyo color indica
-# el estado y una perilla que se desliza animada al alternar. Misma
-# interfaz update/draw que los demás componentes de ui.
-#
-# @section author_toggle Autores
-# - Marcelo Tipán
-#
-# Copyright (c) 2021 Proyecto_Pong.  All rights reserved.
+The pill's color shows the state and the knob slides across when toggled.
+Same update/draw interface as the other ui components.
+"""
 
 import pygame
 
+from config import UI
 
 class Toggle:
-    """! Interruptor de píldora con perilla animada."""
+    """Pill-shaped on/off switch with an animated knob."""
 
-    def __init__(self, pos, get_state, action, sonido=None,
+    def __init__(self, pos, get_state, action, audio=None,
                  width=72, height=34, on_text=None, off_text=None,
                  font_path=None,
-                 on_color=(255, 220, 0), off_color=(90, 90, 90),
-                 knob_color=(255, 255, 255)):
-        """! @param pos        Centro (x, y) del interruptor.
-             @param get_state  Función sin argumentos que devuelve el
-                               estado actual (True = encendido).
-             @param action     Función a ejecutar al hacer clic (debe
-                               alternar el estado que get_state lee).
-             @param on_text    Texto dentro de la píldora al estar
-                               encendido (ej. "ON"); None = sin texto.
-             @param off_text   Ídem, apagado.
-             @param font_path  Fuente para el texto interior (None usa
-                               la fuente por defecto de pygame).
+                 on_color=UI.COLORS["YELLOW"], 
+                 off_color=UI.COLORS["GRAY"],
+                 knob_color=UI.COLORS["WHITE"]):
+        """Create a toggle.
+
+        Args:
+            pos: Center (x, y) of the switch.
+            get_state: Callable returning the current state (True = on).
+            action: Callback run on click; must flip the state get_state reads.
+            on_text / off_text: Optional label shown inside the pill.
+            font_path: Font for the inner label (None uses pygame's default).
         """
         self.rect = pygame.Rect(0, 0, width, height)
         self.rect.center = pos
         self.get_state = get_state
         self.action = action
-        self.sonido = sonido
+        self.audio = audio
         self.on_color = on_color
         self.off_color = off_color
         self.knob_color = knob_color
@@ -52,11 +38,11 @@ class Toggle:
         self.hovered = False
         self._was_hovered = False
 
-        ## Posición animada de la perilla (0.0 = izquierda, 1.0 = derecha)
+        # Animated knob position (0.0 = left, 1.0 = right)
         self.knob_t = 1.0 if get_state() else 0.0
 
-        ## Textos interiores pre-renderizados (tono derivado del color de
-        ## la píldora, como marca de agua)
+        # Inner labels, pre-rendered in a tone derived from the pill color
+        # so they read like a watermark
         font_size = max(9, int(height * 0.38))
         font = (pygame.font.Font(str(font_path), font_size) if font_path
                 else pygame.font.Font(None, font_size + 6))
@@ -65,8 +51,7 @@ class Toggle:
         self.on_surface = font.render(on_text, True, dark_on) if on_text else None
         self.off_surface = font.render(off_text, True, dark_off) if off_text else None
 
-        ## La píldora se ensancha si el texto no cabe junto a la perilla:
-        ## perilla (≈alto) + texto más ancho + márgenes
+        # Widen the pill if the text doesn't fit next to the knob
         widest = max((s.get_width() for s in (self.on_surface, self.off_surface)
                       if s is not None), default=0)
         needed = height + widest + 18
@@ -76,24 +61,23 @@ class Toggle:
 
     def update(self, mouse_pos, clicked):
         self.hovered = self.rect.collidepoint(mouse_pos)
-        if self.hovered and not self._was_hovered and self.sonido:
-            self.sonido.play_hover()
+        if self.hovered and not self._was_hovered and self.audio:
+            self.audio.play_hover()
         self._was_hovered = self.hovered
         if self.hovered and clicked:
-            if self.sonido:
-                self.sonido.play_click()
+            if self.audio:
+                self.audio.play_click()
             self.action()
 
     def draw(self, screen):
         state = self.get_state()
 
-        # La perilla se desliza suavemente hacia su lado (interpolación)
+        # Ease the knob toward its side (exponential interpolation)
         target = 1.0 if state else 0.0
         self.knob_t += (target - self.knob_t) * 0.25
         if abs(self.knob_t - target) < 0.01:
             self.knob_t = target
 
-        # Píldora: el color comunica el estado
         pill_color = self.on_color if state else self.off_color
         radius = self.rect.height // 2
         pygame.draw.rect(screen, pill_color, self.rect, border_radius=radius)
@@ -101,19 +85,18 @@ class Toggle:
             pygame.draw.rect(screen, self.knob_color, self.rect,
                              width=2, border_radius=radius)
 
-        # Perilla deslizante
         margin = 4
         knob_radius = radius - margin
         left_x = self.rect.left + margin + knob_radius
         right_x = self.rect.right - margin - knob_radius
         knob_x = left_x + (right_x - left_x) * self.knob_t
 
-        # Texto interior centrado en el hueco que deja la perilla
+        # Inner label centered in the gap the knob leaves free
         text = self.on_surface if state else self.off_surface
         if text is not None:
             gap_left = self.rect.left + margin
             gap_right = knob_x - knob_radius
-            if not state:   # perilla a la izquierda: hueco a la derecha
+            if not state:   # knob on the left -> gap on the right
                 gap_left = knob_x + knob_radius
                 gap_right = self.rect.right - margin
             center_x = (gap_left + gap_right) / 2

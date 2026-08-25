@@ -50,7 +50,7 @@ class StaticScreen(Scene):
         )
 
         ## Sonido único del juego, propiedad del Director
-        self.sonido = director.sonido
+        self.audio = director.audio
         self.font_config = (str(PATHS.FONT_PATH_ARCADE), FONTS.LARGE)
 
         ## Botón de volver, con la misma fuente arcade del menú
@@ -61,7 +61,7 @@ class StaticScreen(Scene):
                 font_config=self.font_config,
                 action=self.go_back,
                 hover_color=UI.COLORS["YELLOW"],
-                sonido=self.sonido,
+                audio=self.audio,
             )
         ]
 

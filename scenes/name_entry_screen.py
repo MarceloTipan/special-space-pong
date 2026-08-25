@@ -88,7 +88,7 @@ class NameEntry(scene.Scene):
             highscores_screen.Highscores(self.director, highlight=position))
 
     def sonido_click(self):
-        self.director.sonido.play_click()
+        self.director.audio.play_click()
 
     # ------------------------------------------------------------------
     # Funciones heredadas de la clase Scene
@@ -97,7 +97,7 @@ class NameEntry(scene.Scene):
         if event.type != pygame.KEYDOWN:
             return
 
-        sonido = self.director.sonido
+        sonido = self.director.audio
         if event.key in (pygame.K_UP, pygame.K_w):
             self.letters[self.active] = (self.letters[self.active] + 1) % 26
             sonido.play_hover()

@@ -1,24 +1,20 @@
-#!/usr/bin/env python
-# -*- coding: utf-8 -*-
+"""Persistent user settings (volume, language, fullscreen, difficulty).
 
-"""! @brief Configuración persistente del usuario (volumen, idioma, pantalla).
-
-Se guarda en settings.json en la raíz del proyecto. Uso:
+Stored in settings.json at the project root. Usage:
 
     from utils import settings
 
-    settings.load()                    # una vez, al arrancar
-    vol = settings.get("volume")       # leer
-    settings.set("volume", 0.5)        # escribir (guarda automáticamente)
+    settings.load()                 # once, at startup
+    vol = settings.get("volume")    # read
+    settings.set("volume", 0.5)     # write (saved automatically)
 """
 
 import json
-from pathlib import Path
+from config import PATHS
 
-## Archivo donde se persiste la configuración
-SETTINGS_FILE = Path(__file__).resolve().parent.parent / "settings.json"
+SETTINGS_FILE = PATHS.SETTINGS_FILE
 
-## Valores por defecto (también definen qué claves son válidas)
+#: Default values; this dict also defines which keys are valid.
 DEFAULTS = {
     "volume": 0.8,
     "language": "es",
@@ -30,35 +26,35 @@ _data = dict(DEFAULTS)
 
 
 def load():
-    """! Carga settings.json; si no existe o está corrupto, usa defaults."""
+    """Load settings.json, falling back to defaults if missing or corrupt."""
     global _data
     _data = dict(DEFAULTS)
     try:
         with open(SETTINGS_FILE, encoding="utf-8") as f:
             stored = json.load(f)
-        # Solo acepta claves conocidas (ignora basura de versiones viejas)
+        # Only accept known keys (ignores leftovers from older versions)
         _data.update({k: v for k, v in stored.items() if k in DEFAULTS})
     except (FileNotFoundError, json.JSONDecodeError):
         pass
 
 
 def save():
-    """! Escribe la configuración actual a disco."""
+    """Write the current settings to disk."""
     with open(SETTINGS_FILE, "w", encoding="utf-8") as f:
         json.dump(_data, f, indent=2)
 
 
 def get(key):
-    """! Devuelve el valor de una clave de configuración."""
+    """Return the value of a setting."""
     return _data[key]
 
 
 def set(key, value):
-    """! Cambia un valor y lo persiste inmediatamente.
-        @param key    Clave (debe existir en DEFAULTS).
-        @param value  Nuevo valor.
+    """Change a setting and persist it immediately.
+
+    Raises KeyError if the key is not defined in DEFAULTS.
     """
     if key not in DEFAULTS:
-        raise KeyError(f"Clave de configuración desconocida: {key}")
+        raise KeyError(f"Unknown setting: {key}")
     _data[key] = value
     save()

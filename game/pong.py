@@ -204,7 +204,7 @@ class Pong(scene.Scene):
 
         self.images = images if images is not None else self._load_images()
         self.detector = detector if detector is not None else movimiento.Movimiento()
-        self.sonido = director.sonido
+        self.audio = director.audio
 
         ## Campo de estrellas con parallax, sobre el fondo del juego
         self.starfield = Starfield(GAME.SCREEN_WIDTH, GAME.SCREEN_HEIGHT)
@@ -273,7 +273,7 @@ class Pong(scene.Scene):
             pos=(int(w * 0.79), self.HUD_CENTER_Y), size=36,
             action=self._toggle_pause,
             is_paused=lambda: self.paused,
-            sonido=self.sonido)
+            sonido=self.audio)
         self.exit_button = TextButton(
             pos=(int(w * 0.90), self.HUD_CENTER_Y),
             text=t("menu.exit"),
@@ -281,7 +281,7 @@ class Pong(scene.Scene):
             action=self._go_to_menu,
             base_color=UI.COLORS["GRAY"],
             hover_color=UI.COLORS["WHITE"],
-            sonido=self.sonido)
+            audio=self.audio)
         self.hud_buttons = [self.pause_button, self.exit_button]
 
         ## Botones de los overlays de resultado
@@ -291,7 +291,7 @@ class Pong(scene.Scene):
         def make_button(y_off, text_key, action):
             return TextButton(
                 pos=(cx, cy + y_off), text=t(text_key), font_config=font_cfg,
-                action=action, hover_color=UI.COLORS["YELLOW"], sonido=self.sonido)
+                action=action, hover_color=UI.COLORS["YELLOW"], audio=self.audio)
 
         self.overlay_buttons = {
             "level_won": [make_button(80, "game.continue", self._on_continue)],
@@ -387,7 +387,7 @@ class Pong(scene.Scene):
              nivel superado. La pelota se retira; si no quedan, saca de nuevo."""
         self.goals_player += 1
         self.points += 50
-        self.sonido.start_golpe()
+        self.audio.play_hit()
         self._remove_ball(ball)
 
         if self.goals_player >= self.goals_to_win:
@@ -404,7 +404,7 @@ class Pong(scene.Scene):
              Sin corazones, nivel perdido; si no, la pelota vuelve a sacar."""
         self.lives -= 1
         self.goals_enemy += 1
-        self.sonido.start_error()
+        self.audio.play_error()
         self.blink_until = pygame.time.get_ticks() + self.HEART_BLINK_MS
         self._remove_ball(ball)
 
@@ -508,7 +508,7 @@ class Pong(scene.Scene):
         """! Rebote angular de una pelota contra una raqueta (delega el
              cálculo en el propio objeto Ball) y dispara el sonido."""
         ball.bounce_paddle(paddle_x, paddle_w, upward, self.MAX_BOUNCE_X)
-        self.sonido.play("hit" if upward else "hit_enemy")
+        self.audio.play("hit" if upward else "hit_enemy")
         if upward:
             # Cada devolución del jugador es una jugada nueva para la IA
             self._roll_enemy_error()
@@ -566,11 +566,11 @@ class Pong(scene.Scene):
             if ball.x > self.FIELD_RIGHT - ball.w:
                 ball.x = self.FIELD_RIGHT - ball.w
                 ball.bounce_x()
-                self.sonido.start_golpe()
+                self.audio.play_hit()
             elif ball.x < self.FIELD_LEFT:
                 ball.x = self.FIELD_LEFT
                 ball.bounce_x()
-                self.sonido.start_golpe()
+                self.audio.play_hit()
 
             # Raqueta enemiga (rebote en su borde inferior)
             if (ball.y < self.enemy_bottom
@@ -623,7 +623,7 @@ class Pong(scene.Scene):
                     ball.y = obstacle.bottom
                     ball.vy = abs(ball.vy)
 
-            self.sonido.play("hit_obstacle")
+            self.audio.play("hit_obstacle")
             break   # un rebote por frame es suficiente
 
     def _update_paddle(self, dt):

@@ -1,50 +1,35 @@
-# -*- encoding: utf-8 -*-
+"""Main game loop: updates, draws and dispatches events to the active scene.
 
-"""! @brief La clase Director se encarga del funcionamiento del juego."""
-
-##
-# @file director.py
-#
-# @brief Define la clase Director.
-#
-# @section description_director Descripción
-# Mantiene el bucle principal: actualiza, dibuja y propaga los eventos
-# reales de pygame a la escena activa. Todo el juego es pygame 2D.
-#
-# @section notes_director Notas
-# - Mantiene la única instancia de Sonido (director.sonido).
-# - Expone director.dt (segundos del último frame) para la física.
-# - El estado continuo del teclado se lee en on_update de cada escena.
-#
-# @section author_director Autores
-# - Marcelo Tipán
-#
-# Copyright (c) 2021 Proyecto_Pong.  All rights reserved.
+The whole game is 2D pygame. The Director owns the single Audio instance
+(director.audio) and exposes director.dt (seconds since the last frame)
+for frame-rate-independent physics. Continuous keyboard state is read in
+each scene's on_update.
+"""
 
 import pygame
 from pygame.locals import DOUBLEBUF, FULLSCREEN, SCALED
 
 from config import GAME, PATHS
 from utils import settings
-from utils.sonido import Sonido
+from utils.audio import Audio
 
 
 class Director:
-    """! Objeto principal del juego: actualiza, dibuja y propaga eventos."""
+    """Owns the window, the game loop and scene transitions."""
 
-    ## Título de la ventana por estado
+    #: Window caption per game status.
     CAPTIONS = {
-        GAME.STATUS_MENU:         "Pong Menú",
-        GAME.STATUS_INSTRUCTIONS: "Pong Instrucciones",
-        GAME.STATUS_CREDITS:      "Pong Créditos",
-        GAME.STATUS_SETTINGS:     "Pong Configuración",
-        GAME.STATUS_LOADING:      "Pong Loading",
-        GAME.STATUS_GAME:         "Pong Juego",
-        GAME.STATUS_HIGHSCORES:   "Pong Récords",
-        GAME.STATUS_NAME_ENTRY:   "Pong Nuevo Récord",
+        GAME.STATUS_MENU:         "Pong - Menu",
+        GAME.STATUS_INSTRUCTIONS: "Pong - How to Play",
+        GAME.STATUS_CREDITS:      "Pong - Credits",
+        GAME.STATUS_SETTINGS:     "Pong - Settings",
+        GAME.STATUS_LOADING:      "Pong - Loading",
+        GAME.STATUS_GAME:         "Pong - Game",
+        GAME.STATUS_HIGHSCORES:   "Pong - High Scores",
+        GAME.STATUS_NAME_ENTRY:   "Pong - New Record",
     }
 
-    ## Estados que comparten la música de menú
+    #: Statuses that share the menu music.
     MENU_STATUSES = {
         GAME.STATUS_MENU, GAME.STATUS_INSTRUCTIONS,
         GAME.STATUS_CREDITS, GAME.STATUS_SETTINGS,
@@ -52,7 +37,6 @@ class Director:
     }
 
     def __init__(self):
-        """! Inicializa la ventana, el sonido y las variables del bucle."""
         self.SCREEN_SIZE = GAME.SCREEN_SIZE
 
         icon = pygame.image.load(PATHS.IMAGE_PATH_ICON)
@@ -61,25 +45,22 @@ class Director:
         self._current_flags = self._compute_flags()
         self.screen = pygame.display.set_mode(self.SCREEN_SIZE, self._current_flags)
 
-        ## Única instancia de Sonido para todo el juego
-        self.sonido = Sonido()
+        # Single Audio instance shared by every scene
+        self.audio = Audio()
 
         self.scene = None
         self.quit_flag = False
         self.clock = pygame.time.Clock()
 
-        ## Estado actual (lo fija cada escena en su __init__)
-        self.status = 0
-        ## Segundos transcurridos en el último frame (para la física)
-        self.dt = 0.0
-        ## Tiempo acumulado en segundos
-        self.TIME = 0.0
+        self.status = 0        # set by each scene in its __init__
+        self.dt = 0.0          # seconds elapsed in the last frame (physics)
+        self.TIME = 0.0        # accumulated seconds
 
     # ------------------------------------------------------------------
-    # Bucle principal
+    # Main loop
     # ------------------------------------------------------------------
     def loop(self):
-        """! Pone en funcionamiento el juego."""
+        """Run the game until quit is requested."""
         while not self.quit_flag:
             self.dt = self.clock.tick(GAME.FPS) / 1000.0
             self.TIME += self.dt
@@ -96,35 +77,32 @@ class Director:
             pygame.display.flip()
 
     # ------------------------------------------------------------------
-    # Cambio de escena
+    # Scene switching
     # ------------------------------------------------------------------
     def change_scene(self, scene):
-        """! Altera la escena actual, reconfigura la ventana, ajusta la
-             música y carga los recursos de la escena (on_enter)."""
+        """Switch scene, reconfigure the window, update music and enter it."""
         self.scene = scene
         self._apply_display_config()
         self._update_music()
         scene.on_enter()
 
     def _compute_flags(self):
-        ## SCALED: el juego se programa en la resolución lógica de
-        ## GAME.SCREEN_SIZE y pygame escala la ventana para caber en
-        ## cualquier monitor (incluido el mouse, traducido solo).
+        # SCALED: the game is written at the logical GAME.SCREEN_SIZE and
+        # pygame scales the window to fit any monitor (mouse included)
         flags = DOUBLEBUF | SCALED
         if settings.get("fullscreen"):
             flags |= FULLSCREEN
         return flags
 
     def _apply_display_config(self):
-        """! Actualiza el título y recrea la ventana solo si cambió el modo
-             (por ejemplo, al alternar pantalla completa)."""
+        """Update the caption and re-create the window only if the mode changed."""
         pygame.display.set_caption(self.CAPTIONS.get(self.status, "Pong"))
 
         flags = self._compute_flags()
         if flags != self._current_flags:
-            # Si lo ÚNICO que cambió es fullscreen, usar la vía nativa:
-            # alterna sin recrear la ventana (recrearla con set_mode en
-            # Windows la deja mal posicionada / descentrada)
+            # If fullscreen is the ONLY thing that changed, use the native
+            # toggle: it flips without re-creating the window (re-creating it
+            # with set_mode leaves it mis-positioned on Windows)
             only_fullscreen = (flags ^ self._current_flags) == FULLSCREEN
             self._current_flags = flags
             if only_fullscreen:
@@ -133,15 +111,14 @@ class Director:
                 self.screen = pygame.display.set_mode(self.SCREEN_SIZE, flags)
 
     def _update_music(self):
-        """! Reproduce la música según el grupo de la escena: una para
-             los menús, otra para el juego, silencio (fade) en la carga."""
+        """Pick music by scene group: menu music, game music, or silence."""
         if self.status in self.MENU_STATUSES:
-            self.sonido.play_music(PATHS.MUSIC_PATH_MENU)
+            self.audio.play_music(PATHS.MUSIC_PATH_MENU)
         elif self.status == GAME.STATUS_GAME:
-            self.sonido.play_music(PATHS.MUSIC_PATH_GAME)
+            self.audio.play_music(PATHS.MUSIC_PATH_GAME)
         else:
-            self.sonido.stop_music()
+            self.audio.stop_music()
 
     def quit(self):
-        """! Cierra el programa."""
+        """Request the game to close."""
         self.quit_flag = True

@@ -49,7 +49,7 @@ class Menu(Scene):
         )
 
         ## Sonido único del juego, propiedad del Director
-        self.sonido = director.sonido
+        self.audio = director.audio
 
         font_config = (str(PATHS.FONT_PATH_ARCADE), FONTS.LARGE)
 
@@ -70,7 +70,7 @@ class Menu(Scene):
                 text=t(text_key),
                 font_config=font_config,
                 action=action,
-                sonido=self.sonido,
+                audio=self.audio,
                 **extra,
             )
             for offset, text_key, action, extra in button_defs
@@ -94,7 +94,7 @@ class Menu(Scene):
                 icon=icon,
                 image_path=getattr(PATHS, path_name, None),
                 hover_color=UI.COLORS["YELLOW"],
-                sonido=self.sonido,
+                audio=self.audio,
             ))
 
     # ------------------------------------------------------------------

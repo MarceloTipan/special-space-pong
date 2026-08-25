@@ -1,28 +1,14 @@
-#!/usr/bin/env python
-# -*- coding: utf-8 -*-
+"""Draggable horizontal slider, used for volume (and other 0.0-1.0 values).
 
-"""! @brief Slider horizontal arrastrable (para volumen, sensibilidad, etc.)."""
-
-##
-# @file slider.py
-#
-# @brief Define la clase Slider.
-#
-# @section author_slider Autores
-# - Marcelo Tipán
-#
-# Copyright (c) 2021 Proyecto_Pong.  All rights reserved.
+Unlike the buttons, it takes raw pygame events via handle_event(), because
+dragging needs to tell press, move and release apart.
+"""
 
 import pygame
 
 
 class Slider:
-    """! Barra horizontal con manija arrastrable. Valor entre 0.0 y 1.0.
-
-    A diferencia de los botones, recibe los eventos crudos con
-    handle_event(event), porque necesita distinguir presionar,
-    arrastrar y soltar.
-    """
+    """Horizontal track with a draggable handle; value in [0.0, 1.0]."""
 
     TRACK_HEIGHT = 6
     HANDLE_RADIUS = 12
@@ -30,13 +16,16 @@ class Slider:
     def __init__(self, pos, width, value, label, font_config,
                  track_color, fill_color, handle_color, text_color,
                  on_change=None, on_release=None):
-        """! @param pos          Centro (x, y) del slider.
-             @param width        Ancho de la pista en píxeles.
-             @param value        Valor inicial (0.0 a 1.0).
-             @param label        Texto sobre el slider (ej. "VOLUMEN").
-             @param font_config  Tupla (ruta_fuente, tamaño).
-             @param on_change    Callback(valor) mientras se arrastra.
-             @param on_release   Callback(valor) al soltar la manija.
+        """Create a slider.
+
+        Args:
+            pos: Center (x, y) of the whole widget.
+            width: Track width in pixels.
+            value: Initial value (0.0 to 1.0).
+            label: Caption drawn above the track.
+            font_config: (font_path, size) tuple.
+            on_change: Callback(value) fired while dragging.
+            on_release: Callback(value) fired when the handle is released.
         """
         self.x, self.y = pos
         self.width = width
@@ -51,21 +40,18 @@ class Slider:
         self.on_release = on_release
 
         font = pygame.font.Font(*font_config)
-        ## Etiqueta pre-renderizada (no cambia)
         self.label_surface = font.render(label, True, text_color)
-        ## Fuente para el porcentaje (se re-renderiza solo al cambiar)
         self.pct_font = font
         self._pct_cache_value = None
         self._pct_surface = None
 
-        ## Para centrar el CONJUNTO (pista + porcentaje) en self.x:
-        ## se reserva el ancho máximo del porcentaje ("100%")
+        # Center the whole group (track + percentage) on self.x by reserving
+        # room for the widest percentage ("100%")
         self.pct_gap = 25
         self.pct_reserve = font.size("100%")[0]
         total = self.width + self.pct_gap + self.pct_reserve
         self._left = self.x - total // 2
 
-    # ------------------------------------------------------------------
     @property
     def track_left(self):
         return self._left
@@ -78,12 +64,10 @@ class Slider:
         rel = (mouse_x - self.track_left) / self.width
         return max(0.0, min(1.0, rel))
 
-    # ------------------------------------------------------------------
     def handle_event(self, event):
-        """! Procesa un evento crudo de pygame."""
+        """Process one raw pygame event (press, drag or release)."""
         if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
             mx, my = event.pos
-            # Empieza a arrastrar si se presiona sobre la manija o la pista
             on_handle = (abs(mx - self.handle_x) <= self.HANDLE_RADIUS * 2
                          and abs(my - self.y) <= self.HANDLE_RADIUS * 2)
             on_track = (self.track_left <= mx <= self.track_left + self.width
@@ -107,15 +91,12 @@ class Slider:
             if self.on_change:
                 self.on_change(value)
 
-    # ------------------------------------------------------------------
     def draw(self, screen):
-        # Etiqueta centrada sobre el centro del widget (no de la pista,
-        # que está corrida a la izquierda por el hueco del porcentaje)
-        label_rect = self.label_surface.get_rect(
-            midbottom=(self.x, self.y - 18))
+        # Label centered on the widget center (not the track, which sits
+        # left of center because of the percentage's reserved space)
+        label_rect = self.label_surface.get_rect(midbottom=(self.x, self.y - 18))
         screen.blit(self.label_surface, label_rect)
 
-        # Pista completa (fondo) y porción llena
         track_rect = pygame.Rect(
             self.track_left, self.y - self.TRACK_HEIGHT // 2,
             self.width, self.TRACK_HEIGHT)
@@ -126,11 +107,10 @@ class Slider:
             self.handle_x - self.track_left, self.TRACK_HEIGHT)
         pygame.draw.rect(screen, self.fill_color, fill_rect, border_radius=3)
 
-        # Manija (más grande mientras se arrastra)
-        radius = self.HANDLE_RADIUS + (3 if self.dragging else 0)
+        radius = self.HANDLE_RADIUS + (3 if self.dragging else 0)   # grows while dragging
         pygame.draw.circle(screen, self.handle_color, (self.handle_x, self.y), radius)
 
-        # Porcentaje a la derecha (cacheado)
+        # Percentage on the right, re-rendered only when it changes
         pct = int(self.value * 100)
         if pct != self._pct_cache_value:
             self._pct_cache_value = pct

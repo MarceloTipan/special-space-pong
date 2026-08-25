@@ -94,7 +94,7 @@ class Settings(StaticScreen):
                 self.buttons.append(TextButton(
                     pos=(self.cx + dx, self.row_y[row]),
                     text=text, font_config=font_medium, action=action,
-                    hover_color=UI.COLORS["YELLOW"], sonido=self.sonido))
+                    hover_color=UI.COLORS["YELLOW"], audio=self.audio))
 
         ## --- Pantalla completa: etiqueta + toggle en la misma fila,
         ## centrados como grupo ---
@@ -111,7 +111,7 @@ class Settings(StaticScreen):
                  + toggle_w // 2, fs_y),
             get_state=lambda: settings.get("fullscreen"),
             action=self._toggle_fullscreen,
-            sonido=self.sonido,
+            audio=self.audio,
             width=toggle_w,
             on_text=t("common.on"),
             off_text=t("common.off"),
@@ -123,11 +123,11 @@ class Settings(StaticScreen):
     # Volumen
     # ------------------------------------------------------------------
     def _apply_volume(self, value):
-        self.sonido.set_volume(value)
+        self.audio.set_volume(value)
 
     def _save_volume(self, value):
         settings.set("volume", value)
-        self.sonido.play_hover()
+        self.audio.play_hover()
 
     # ------------------------------------------------------------------
     # Idioma

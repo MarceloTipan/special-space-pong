@@ -1,25 +1,21 @@
-#!/usr/bin/env python
-# -*- coding: utf-8 -*-
+"""High score table, persisted to highscores.json.
 
-"""! @brief Tabla de mejores puntajes, persistida en highscores.json.
-
-Uso:
+Usage:
     from utils import highscores
 
-    if highscores.qualifies(puntos):
-        posicion = highscores.add("MTP", puntos, nivel)
-    tabla = highscores.get_all()
+    if highscores.qualifies(points):
+        position = highscores.add("MTP", points, level)
+    table = highscores.get_all()
 """
 
 import json
+from config import PATHS
 from datetime import date
-from pathlib import Path
 
-## Archivo de persistencia (junto a settings.json)
-SCORES_FILE = Path(__file__).resolve().parent.parent / "highscores.json"
+SCORES_FILE = PATHS.HIGHSCORES_FILE
 
-## Cantidad máxima de entradas en la tabla
-MAX_ENTRIES = 5
+#: Maximum number of entries kept in the table.
+MAX_ENTRIES = 10
 
 _scores = None
 
@@ -42,15 +38,12 @@ def _save():
 
 
 def get_all():
-    """! Devuelve la tabla ordenada de mayor a menor puntaje."""
+    """Return the table, ordered from highest to lowest score."""
     return list(_load())
 
 
 def qualifies(points):
-    """! ¿Este puntaje entra al top?
-        @param points  Puntaje a evaluar.
-        @return True si hay espacio o si supera al último de la tabla.
-    """
+    """Whether this score makes the table (there's room or it beats the last)."""
     scores = _load()
     if points <= 0:
         return False
@@ -60,11 +53,9 @@ def qualifies(points):
 
 
 def add(initials, points, level):
-    """! Inserta una entrada en la tabla y la persiste.
-        @param initials  Tres letras del jugador.
-        @param points    Puntaje alcanzado.
-        @param level     Nivel máximo alcanzado en la partida.
-        @return La posición (1 = primer lugar) donde quedó la entrada.
+    """Insert an entry, keep only the top MAX_ENTRIES, and persist.
+
+    Returns the 1-based position where the entry landed (1 = first place).
     """
     scores = _load()
     entry = {
