@@ -1,49 +1,51 @@
-#!/usr/bin/env python
-# -*- coding: utf-8 -*-
+"""Game obstacle: a rectangular hitbox with an asteroid sprite on top.
 
-"""Obstáculo del juego: hitbox rectangular + sprite de asteroide.
-
-La colisión usa el Rect (física predecible), pero el sprite se dibuja
-encima, ligeramente más grande y rotando lento, para que se vea orgánico.
-Las rotaciones se pre-calculan una sola vez (cachear en vez de rotar cada
-frame, que sería costoso).
+Collision uses the Rect (predictable physics), but the sprite is drawn
+over it, slightly larger and slowly spinning, so it looks organic.
+Rotations are pre-computed once (caching beats rotating every frame).
 """
-
-import math
 
 import pygame
 
 
 class Obstacle:
-    """! Asteroide: rectángulo de colisión con sprite rotatorio encima."""
+    """Asteroid: a collision rectangle with a spinning sprite on top."""
 
-    ## Cuántos fotogramas de rotación se pre-generan (uno cada 360/N grados)
+    #: Pre-rendered rotation frames (one every 360/N degrees).
     ROTATION_STEPS = 36
 
-    ## El sprite se dibuja un poco más grande que la hitbox, para que los
-    ## picos irregulares sobresalgan y el rebote nunca se vea adelantado
+    #: The sprite is drawn larger than the hitbox so its jagged edges stick
+    #: out and the bounce never looks like it happens early.
     SPRITE_SCALE = 1.35
 
-    ## Caché de sprites pre-rotados, compartida por todos los asteroides
-    ## que usan la misma imagen base: {(id_imagen, tam): [frames...]}
+    #: Cache of pre-rotated sprites, shared by all asteroids using the same
+    #: base image: {(image_id, size): [frames...]}.
     _rotation_cache = {}
 
     def __init__(self, rect, base_image, spin_speed=20, angle_offset=0):
-        """! @param rect         pygame.Rect de colisión.
-             @param base_image   Superficie del asteroide (con alpha).
-             @param spin_speed    Velocidad de giro en grados/segundo.
-             @param angle_offset  Ángulo inicial (para que no giren iguales).
+        """Create an obstacle.
+
+        Args:
+            rect: pygame.Rect used for collision.
+            base_image: Asteroid surface (with alpha), or None to draw a block.
+            spin_speed: Spin rate in degrees per second.
+            angle_offset: Starting angle, so they don't all spin in sync.
         """
         self.rect = rect
         self.spin_speed = spin_speed
         self.angle = angle_offset
+
+        # No sprite: skip pre-rotation (the scene draws it as a neon block)
+        if base_image is None:
+            self.frames = None
+            return
 
         sprite_size = int(max(rect.width, rect.height) * self.SPRITE_SCALE)
         self.frames = self._get_frames(base_image, sprite_size)
 
     @classmethod
     def _get_frames(cls, base_image, size):
-        """! Devuelve (y cachea) la lista de sprites pre-rotados a 'size'."""
+        """Return (and cache) the list of pre-rotated sprites at 'size'."""
         key = (id(base_image), size)
         if key not in cls._rotation_cache:
             scaled = pygame.transform.smoothscale(base_image, (size, size))
@@ -58,28 +60,41 @@ class Obstacle:
         self.angle = (self.angle + self.spin_speed * dt) % 360
 
     def draw(self, screen):
-        # Elegir el fotograma pre-rotado más cercano al ángulo actual
+        if self.frames is None:
+            return   # no sprite: the scene's neon fallback draws it
         index = int(self.angle / (360 / self.ROTATION_STEPS)) % self.ROTATION_STEPS
         frame = self.frames[index]
-        # Centrar el sprite (más grande) sobre el centro de la hitbox
         screen.blit(frame, frame.get_rect(center=self.rect.center))
 
-    # Compatibilidad: permite tratar el obstáculo como su rect en colisiones
+    # ------------------------------------------------------------------
+    # Rect-like interface, so collision code can treat it as its hitbox
+    # ------------------------------------------------------------------
     def colliderect(self, other):
         return self.rect.colliderect(other)
 
-    @property
-    def left(self): return self.rect.left
-    @property
-    def right(self): return self.rect.right
-    @property
-    def top(self): return self.rect.top
-    @property
-    def bottom(self): return self.rect.bottom
-    @property
-    def centerx(self): return self.rect.centerx
-    @property
-    def centery(self): return self.rect.centery
-
     def inflate(self, x, y):
         return self.rect.inflate(x, y)
+
+    @property
+    def left(self):
+        return self.rect.left
+
+    @property
+    def right(self):
+        return self.rect.right
+
+    @property
+    def top(self):
+        return self.rect.top
+
+    @property
+    def bottom(self):
+        return self.rect.bottom
+
+    @property
+    def centerx(self):
+        return self.rect.centerx
+
+    @property
+    def centery(self):
+        return self.rect.centery

@@ -1,10 +1,7 @@
-#!/usr/bin/env python
-# -*- coding: utf-8 -*-
+"""Ball entity: position, velocity and its own bounce physics.
 
-"""Pelota del juego: posición, velocidad y su propia física de rebote.
-
-Encapsular la pelota como objeto permite tener varias a la vez (multibola
-en niveles altos y en el nivel bonus) sin duplicar lógica.
+Encapsulating the ball as an object lets several coexist (multiball in
+late levels and the bonus stage) without duplicating logic.
 """
 
 import math
@@ -14,29 +11,34 @@ import pygame
 
 
 class Ball:
-    """! Una pelota con posición, velocidad y rebotes."""
+    """A single ball: position, velocity, trail and bounce handling."""
 
-    ## Variación de rapidez entre pelotas (±fracción respecto a la base)
+    #: Speed variation between balls (fraction around the base speed).
     SPEED_JITTER = 0.15
 
-    ## Cuántas posiciones pasadas se guardan para dibujar la estela
+    #: How many past positions are kept to draw the trail.
     TRAIL_LENGTH = 10
 
-    def __init__(self, x, y, width, height, speed, direction=None):
-        """! @param x, y            Posición inicial (esquina superior izq).
-             @param width, height   Tamaño del sprite.
-             @param speed           Rapidez base (px/s); se le aplica jitter.
-             @param direction       +1 hacia abajo, -1 hacia arriba, None=azar.
+    def __init__(self, x, y, width, height, speed, direction=None, serve_delay=0.0):
+        """Create a ball.
+
+        Args:
+            x, y: Initial top-left position.
+            width, height: Sprite size.
+            speed: Base speed (px/s); a small jitter is applied.
+            direction: +1 down, -1 up, None for random.
+            serve_delay: Seconds the ball waits in place before launching.
         """
         self.x = float(x)
         self.y = float(y)
         self.w = width
         self.h = height
+        self.serve_delay = serve_delay
 
-        ## Historial de centros para la estela (el más reciente al final)
+        # Trail history of centers (most recent last)
         self.trail = []
 
-        # Cada pelota varía un poco su rapidez, para que no vayan clonadas
+        # Vary each ball's speed slightly so they don't move in lockstep
         self.speed = speed * (1 + random.uniform(-self.SPEED_JITTER,
                                                  self.SPEED_JITTER))
         if direction is None:
@@ -44,12 +46,16 @@ class Ball:
         self._launch(direction)
 
     def _launch(self, direction):
-        """! Lanza la pelota con un ángulo aleatorio en la dirección dada."""
-        angle = math.radians(random.uniform(-35, 35))   # respecto a la vertical
+        """Set a random launch angle in the given vertical direction."""
+        angle = math.radians(random.uniform(-35, 35))   # from the vertical
         self.vx = self.speed * math.sin(angle)
         self.vy = self.speed * math.cos(angle) * direction
 
-    # ------------------------------------------------------------------
+    @property
+    def waiting(self):
+        """Whether the ball is still waiting to be launched."""
+        return self.serve_delay > 0
+
     @property
     def cx(self):
         return self.x + self.w / 2
@@ -63,7 +69,11 @@ class Ball:
         return pygame.Rect(int(self.x), int(self.y), self.w, self.h)
 
     def move(self, dt):
-        # Guarda el centro actual antes de moverse (para la estela)
+        """Advance the ball by dt seconds (or count down its serve delay)."""
+        if self.serve_delay > 0:
+            self.serve_delay = max(0.0, self.serve_delay - dt)
+            return
+        # Record the current center (for the trail) before moving
         self.trail.append((self.cx, self.cy))
         if len(self.trail) > self.TRAIL_LENGTH:
             self.trail.pop(0)
@@ -71,26 +81,21 @@ class Ball:
         self.y += self.vy * dt
 
     def time_to_reach_y(self, target_y):
-        """! Tiempo estimado (s) hasta que la pelota llegue a target_y.
-             Devuelve infinito si se aleja de ese objetivo.
-             Sirve para que la IA elija a qué pelota atender."""
+        """Estimated seconds until the ball reaches target_y.
+
+        Returns infinity if it's moving away from it. Used by the AI to
+        pick which ball to defend against.
+        """
         dy = target_y - self.cy
         if self.vy == 0 or (dy > 0) != (self.vy > 0):
             return float("inf")
         return dy / self.vy
 
-    def set_speed_scale(self, scale):
-        """! Reescala la velocidad conservando la dirección (cambio de nivel)."""
-        self.vx *= scale
-        self.vy *= scale
-        self.speed *= scale
-
-    def bounce_x(self):
-        self.vx = -self.vx
-
     def bounce_paddle(self, paddle_x, paddle_w, upward, max_bounce_x):
-        """! Rebote angular según el punto de impacto en la raqueta:
-             centro = vertical, borde = diagonal. Conserva la rapidez."""
+        """Angular bounce based on where the ball hits the paddle.
+
+        Center = vertical, edge = diagonal. Total speed is preserved.
+        """
         paddle_center = paddle_x + paddle_w / 2
         hit = (self.cx - paddle_center) / (paddle_w / 2)
         hit = max(-1.0, min(1.0, hit))

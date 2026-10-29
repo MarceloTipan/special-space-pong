@@ -1,22 +1,8 @@
-#!/usr/bin/env python
-# -*- coding: utf-8 -*-
+"""Settings screen: volume, language, fullscreen, difficulty and controls.
 
-"""! @brief La clase Settings muestra la pantalla de Configuración."""
-
-##
-# @file settings_screen.py
-#
-# @brief Define la clase Settings.
-#
-# @section description_settings Descripción
-# Volumen (slider), idioma, pantalla completa y dificultad. Todo el
-# layout es proporcional a la resolución: centrado horizontal y filas
-# como fracciones del alto de pantalla.
-#
-# @section author_settings Autores
-# - Marcelo Tipán
-#
-# Copyright (c) 2021 Proyecto_Pong.  All rights reserved.
+The whole layout is proportional to the resolution: horizontally centered,
+with rows placed as fractions of the screen height.
+"""
 
 import pygame
 
@@ -30,97 +16,118 @@ from config import FONTS, PATHS, UI, GAME
 
 
 class Settings(StaticScreen):
-    """! Escena de configuración del juego."""
+    """Game settings screen."""
 
     BACKGROUND_PATH = getattr(PATHS, "IMAGE_PATH_SETTINGS", PATHS.IMAGE_PATH_MENU)
     STATUS = GAME.STATUS_SETTINGS
 
     DIFFICULTIES = ["easy", "normal", "hard"]
+    CONTROLS = ["camera", "mouse", "keyboard"]
 
-    ## Filas del layout como fracción del alto de pantalla
+    #: Layout rows as a fraction of the screen height.
     ROWS = {
-        "title": 0.10,
-        "volume": 0.23,
-        "lang_label": 0.33, "lang_value": 0.39,
-        "fullscreen": 0.50,
-        "diff_label": 0.60, "diff_value": 0.66,
+        "title": 0.08,
+        "volume": 0.19,
+        "lang_label": 0.28, "lang_value": 0.33,
+        "fullscreen": 0.42,
+        "diff_label": 0.51, "diff_value": 0.56,
+        "control_label": 0.65, "control_value": 0.70,
+        "camera_invert": 0.79,
     }
+
+    TOGGLE_GAP = 30   #: space between a toggle and its label
 
     def __init__(self, director):
         super().__init__(director)
 
         w, h = GAME.SCREEN_WIDTH, GAME.SCREEN_HEIGHT
         self.cx = w // 2
-        ## y absoluta de cada fila, derivada de las fracciones
         self.row_y = {name: int(h * frac) for name, frac in self.ROWS.items()}
-        ## Separación de las flechas < > respecto al centro
-        arrow_dx = max(120, int(w * 0.13))
+        self.arrow_dx = max(120, int(w * 0.13))   # arrow offset from the center
 
-        font_medium = (str(PATHS.FONT_PATH_ARCADE), FONTS.MEDIUM)
-        self.font_medium_obj = pygame.font.Font(*font_medium)
+        self.font_config = (str(PATHS.FONT_PATH_ARCADE), FONTS.MEDIUM)
+        self.font = pygame.font.Font(*self.font_config)
         font_title = pygame.font.Font(str(PATHS.FONT_PATH_ARCADE), FONTS.LARGE)
 
-        ## Textos estáticos, TODOS centrados: (superficie, fila)
-        white = UI.COLORS["WHITE"]
-        self.static_texts = [
-            (font_title.render(t("settings.title"), True, UI.COLORS["YELLOW"]), "title"),
-            (self.font_medium_obj.render(t("settings.language"), True, white), "lang_label"),
-            (self.font_medium_obj.render(t("settings.difficulty"), True, white), "diff_label"),
-        ]
+        white, yellow = UI.COLORS["WHITE"], UI.COLORS["YELLOW"]
+        control = settings.get("control")
 
-        ## --- Volumen: slider centrado (con su etiqueta integrada) ---
+        # Text drawn every frame: (surface, rect)
+        self.texts = []
+        self._add_text(font_title.render(t("settings.title"), True, yellow), "title")
+
         self.volume_slider = Slider(
             pos=(self.cx, self.row_y["volume"]),
             width=min(300, int(w * 0.4)),
             value=settings.get("volume"),
             label=t("settings.volume"),
-            font_config=font_medium,
+            font_config=self.font_config,
             track_color=UI.COLORS["GRAY"],
-            fill_color=UI.COLORS["YELLOW"],
+            fill_color=yellow,
             handle_color=white,
             text_color=white,
             on_change=self._apply_volume,
             on_release=self._save_volume,
         )
 
-        ## --- Selectores con flechas: idioma y dificultad ---
-        self._render_language_value()
-        self._render_difficulty_value()
-        for row, prev_action, next_action in (
-                ("lang_value", self._prev_language, self._next_language),
-                ("diff_value", self._prev_difficulty, self._next_difficulty)):
-            for text, dx, action in (("<", -arrow_dx, prev_action),
-                                     (">", arrow_dx, next_action)):
-                self.buttons.append(TextButton(
-                    pos=(self.cx + dx, self.row_y[row]),
-                    text=text, font_config=font_medium, action=action,
-                    hover_color=UI.COLORS["YELLOW"], audio=self.audio))
+        self._add_selector("lang_label", "settings.language", "lang_value",
+                           t("language_name"), self._change_language)
+        self._add_selector("diff_label", "settings.difficulty", "diff_value",
+                           t(f"difficulty.{settings.get('difficulty')}"),
+                           lambda step: self._cycle("difficulty", self.DIFFICULTIES, step))
+        self._add_selector("control_label", "settings.control", "control_value",
+                           t(f"control.{control}"),
+                           lambda step: self._cycle("control", self.CONTROLS, step))
 
-        ## --- Pantalla completa: etiqueta + toggle en la misma fila,
-        ## centrados como grupo ---
-        self.fullscreen_label = self.font_medium_obj.render(
-            t("settings.fullscreen"), True, white)
-        toggle_w, gap = 72, 30
-        group_w = self.fullscreen_label.get_width() + gap + toggle_w
-        group_left = self.cx - group_w // 2
-        fs_y = self.row_y["fullscreen"]
-        self.fullscreen_label_rect = self.fullscreen_label.get_rect(
-            midleft=(group_left, fs_y))
-        self.buttons.append(Toggle(
-            pos=(group_left + self.fullscreen_label.get_width() + gap
-                 + toggle_w // 2, fs_y),
-            get_state=lambda: settings.get("fullscreen"),
-            action=self._toggle_fullscreen,
-            audio=self.audio,
-            width=toggle_w,
-            on_text=t("common.on"),
-            off_text=t("common.off"),
-            font_path=PATHS.FONT_PATH_ARCADE,
-            on_color=UI.COLORS["YELLOW"],
-            off_color=UI.COLORS["GRAY"]))
+        self._add_toggle("fullscreen", "settings.fullscreen", "fullscreen",
+                         self._toggle_fullscreen)
+        # Only relevant (and only shown) when playing with the camera
+        if control == "camera":
+            self._add_toggle("camera_invert", "settings.camera_invert", "camera_invert",
+                             lambda: settings.set("camera_invert",
+                                                  not settings.get("camera_invert")))
 
     # ------------------------------------------------------------------
-    # Volumen
+    # Row builders
+    # ------------------------------------------------------------------
+    def _add_text(self, surface, row, **anchor):
+        """Queue a pre-rendered text, centered on its row unless anchored."""
+        anchor = anchor or {"center": (self.cx, self.row_y[row])}
+        self.texts.append((surface, surface.get_rect(**anchor)))
+
+    def _add_selector(self, label_row, label_key, value_row, value_text, change):
+        """Label on one row, then "< value >" below it.
+
+        Args:
+            change: Callback taking -1 (previous) or +1 (next).
+        """
+        white, yellow = UI.COLORS["WHITE"], UI.COLORS["YELLOW"]
+        self._add_text(self.font.render(t(label_key), True, white), label_row)
+        self._add_text(self.font.render(value_text, True, yellow), value_row)
+        for text, dx, step in (("<", -self.arrow_dx, -1), (">", self.arrow_dx, +1)):
+            self.buttons.append(TextButton(
+                pos=(self.cx + dx, self.row_y[value_row]), text=text,
+                font_config=self.font_config, action=lambda s=step: change(s),
+                hover_color=yellow, audio=self.audio))
+
+    def _add_toggle(self, row, label_key, setting_key, action):
+        """Label and toggle on the same row, centered together as a group."""
+        y = self.row_y[row]
+        label = self.font.render(t(label_key), True, UI.COLORS["WHITE"])
+        toggle = Toggle(
+            pos=(0, y), get_state=lambda: settings.get(setting_key), action=action,
+            audio=self.audio, on_text=t("common.on"), off_text=t("common.off"),
+            font_path=PATHS.FONT_PATH_ARCADE,
+            on_color=UI.COLORS["YELLOW"], off_color=UI.COLORS["GRAY"])
+
+        # The toggle sizes itself to its text, so measure it before centering
+        left = self.cx - (label.get_width() + self.TOGGLE_GAP + toggle.rect.width) // 2
+        self._add_text(label, row, midleft=(left, y))
+        toggle.rect.midleft = (left + label.get_width() + self.TOGGLE_GAP, y)
+        self.buttons.append(toggle)
+
+    # ------------------------------------------------------------------
+    # Actions
     # ------------------------------------------------------------------
     def _apply_volume(self, value):
         self.audio.set_volume(value)
@@ -129,13 +136,6 @@ class Settings(StaticScreen):
         settings.set("volume", value)
         self.audio.play_hover()
 
-    # ------------------------------------------------------------------
-    # Idioma
-    # ------------------------------------------------------------------
-    def _render_language_value(self):
-        self.language_value = self.font_medium_obj.render(
-            t("language_name"), True, UI.COLORS["YELLOW"])
-
     def _change_language(self, step):
         langs = available_languages()
         idx = (langs.index(get_language()) + step) % len(langs)
@@ -143,53 +143,27 @@ class Settings(StaticScreen):
         settings.set("language", langs[idx])
         self.director.change_scene(Settings(self.director))
 
-    def _prev_language(self):
-        self._change_language(-1)
-
-    def _next_language(self):
-        self._change_language(+1)
-
-    # ------------------------------------------------------------------
-    # Dificultad
-    # ------------------------------------------------------------------
-    def _render_difficulty_value(self):
-        self.difficulty_value = self.font_medium_obj.render(
-            t(f"difficulty.{settings.get('difficulty')}"), True, UI.COLORS["YELLOW"])
-
-    def _change_difficulty(self, step):
-        current = settings.get("difficulty")
-        idx = (self.DIFFICULTIES.index(current) + step) % len(self.DIFFICULTIES)
-        settings.set("difficulty", self.DIFFICULTIES[idx])
+    def _cycle(self, key, options, step):
+        """Move a setting to the previous/next option and rebuild the screen."""
+        current = settings.get(key)
+        idx = options.index(current) if current in options else 0
+        settings.set(key, options[(idx + step) % len(options)])
         self.director.change_scene(Settings(self.director))
 
-    def _prev_difficulty(self):
-        self._change_difficulty(-1)
-
-    def _next_difficulty(self):
-        self._change_difficulty(+1)
-
-    # ------------------------------------------------------------------
-    # Pantalla completa
-    # ------------------------------------------------------------------
     def _toggle_fullscreen(self):
         settings.set("fullscreen", not settings.get("fullscreen"))
-        # Sin reconstruir la escena: el toggle lee el estado en vivo y
-        # así se ve la animación de la perilla; solo se reaplica la ventana
+        # Don't rebuild the scene: the toggle reads the state live, so its
+        # knob animates; only re-apply the window config
         self.director._apply_display_config()
 
     # ------------------------------------------------------------------
-    # Funciones heredadas
+    # Scene hooks
     # ------------------------------------------------------------------
     def on_event(self, event):
         super().on_event(event)
         self.volume_slider.handle_event(event)
 
     def draw_content(self, screen):
-        for surface, row in self.static_texts:
-            screen.blit(surface, surface.get_rect(center=(self.cx, self.row_y[row])))
+        for surface, rect in self.texts:
+            screen.blit(surface, rect)
         self.volume_slider.draw(screen)
-        screen.blit(self.fullscreen_label, self.fullscreen_label_rect)
-        screen.blit(self.language_value, self.language_value.get_rect(
-            center=(self.cx, self.row_y["lang_value"])))
-        screen.blit(self.difficulty_value, self.difficulty_value.get_rect(
-            center=(self.cx, self.row_y["diff_value"])))

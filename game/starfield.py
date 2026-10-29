@@ -1,11 +1,8 @@
-#!/usr/bin/env python
-# -*- coding: utf-8 -*-
+"""Parallax star field for the game background.
 
-"""Campo de estrellas con scroll parallax para el fondo del juego.
-
-Varias capas de estrellas a distinta velocidad y tamaño crean sensación
-de profundidad: las lejanas se mueven lento y tenues, las cercanas rápido
-y brillantes. Se genera por procedimiento (sin imágenes que costurar).
+Several star layers at different speeds and sizes create depth: distant
+ones move slow and dim, near ones fast and bright. Generated procedurally
+(no images to seam-match).
 """
 
 import random
@@ -14,9 +11,9 @@ import pygame
 
 
 class Starfield:
-    """! Fondo animado de estrellas en capas con efecto parallax."""
+    """Animated, layered star background with a parallax effect."""
 
-    ## (cantidad, velocidad px/s, radio, brillo) por capa: de lejana a cercana
+    #: Per layer, far to near: (count, speed px/s, radius, brightness).
     LAYERS = [
         (40, 8,  1, 110),
         (30, 18, 1, 170),
@@ -24,32 +21,31 @@ class Starfield:
     ]
 
     def __init__(self, width, height, seed=None):
-        """! @param width, height  Tamaño del área a cubrir.
-             @param seed           Semilla opcional (para reproducibilidad).
-        """
+        """Create a star field covering width x height (seed for repeatability)."""
         self.width = width
         self.height = height
-        rng = random.Random(seed)
+        # Own generator: visual randomness must not consume the global one
+        # the gameplay uses, or the effect would change gameplay outcomes
+        self.rng = random.Random(seed)
 
-        ## Cada capa es una lista de estrellas [x, y]; el color/velocidad
-        ## son propios de la capa (guardados en paralelo en self.meta)
+        # Each layer is a list of [x, y] stars; its speed/radius/color live
+        # in self.meta in parallel
         self.layers = []
         self.meta = []
         for count, speed, radius, brightness in self.LAYERS:
-            stars = [[rng.uniform(0, width), rng.uniform(0, height)]
+            stars = [[self.rng.uniform(0, width), self.rng.uniform(0, height)]
                      for _ in range(count)]
             self.layers.append(stars)
             self.meta.append((speed, radius, (brightness,) * 3))
 
     def update(self, dt):
-        """! Desplaza las estrellas hacia abajo; las que salen reaparecen
-             arriba (scroll infinito)."""
+        """Scroll stars downward; those leaving the screen wrap to the top."""
         for stars, (speed, _radius, _color) in zip(self.layers, self.meta):
             for star in stars:
                 star[1] += speed * dt
                 if star[1] > self.height:
                     star[1] -= self.height
-                    star[0] = random.uniform(0, self.width)
+                    star[0] = self.rng.uniform(0, self.width)
 
     def draw(self, screen):
         for stars, (_speed, radius, color) in zip(self.layers, self.meta):
