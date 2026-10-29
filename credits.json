@@ -1,0 +1,37 @@
+{
+    "lines": [
+        { "i18n": "credits.roles.development", "title": true },
+        "Marcelo Tipán",
+        "",
+
+        { "i18n": "credits.roles.art", "title": true },
+        "Marcelo Tipán",
+        "<Asset> - <Author> (CC0)",
+        "",
+
+        { "i18n": "credits.roles.music", "title": true },
+        "\"<Your song>\" - Marcelo Tipán",
+        "\"<Song title>\" - <Author>",
+        "CC BY 4.0",
+        "",
+
+        { "i18n": "credits.roles.sfx", "title": true },
+        "<Author> - freesound.org (CC0)",
+        "",
+
+        { "i18n": "credits.roles.fonts", "title": true },
+        "Press Start 2P - CodeMan38",
+        "SIL Open Font License 1.1",
+        "",
+
+        { "i18n": "credits.roles.built_with", "title": true },
+        "Python / pygame / OpenCV / NumPy",
+        "",
+
+        { "i18n": "credits.roles.thanks", "title": true },
+        { "i18n": "credits.thanks_text" },
+        "",
+        "github.com/MarceloTipan",
+        "v1.0.0"
+    ]
+}
