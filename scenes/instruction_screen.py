@@ -1,61 +1,26 @@
-#!/usr/bin/env python
-# -*- coding: utf-8 -*-
+"""Instructions screen.
 
-"""! @brief La clase Instructions carga la pantalla de Instrucciones."""
-
-##
-# @file instruction_screen.py
-#
-# @brief Define la clase Instructions.
-#
-# @section description_instrucciones Descripción
-# Muestra las instrucciones del juego. Cada línea del i18n se parte
-# automáticamente (word-wrap) para caber en el ancho de la pantalla.
-#
-# @section author_instrucciones Autores
-# - Marcelo Tipán
-#
-# Copyright (c) 2021 Proyecto_Pong.  All rights reserved.
+Shows the game instructions. Each i18n line is word-wrapped automatically
+to fit the screen width.
+"""
 
 import pygame
 
 from scenes.static_screen import StaticScreen
 from utils.i18n import t
+from utils.text import wrap_text
 from config import FONTS, PATHS, UI, GAME
 
 
-def wrap_text(text, font, max_width):
-    """! Parte un texto en líneas que caben en max_width píxeles.
-        @param text       Texto a partir.
-        @param font       Fuente con la que se medirá (font.size).
-        @param max_width  Ancho máximo por línea, en píxeles.
-        @return Lista de líneas.
-    """
-    words = text.split()
-    lines, current = [], ""
-    for word in words:
-        candidate = f"{current} {word}".strip()
-        if font.size(candidate)[0] <= max_width or not current:
-            current = candidate
-        else:
-            lines.append(current)
-            current = word
-    if current:
-        lines.append(current)
-    return lines
-
-
 class Instructions(StaticScreen):
-    """! Escena de instrucciones del juego."""
+    """Game instructions screen."""
 
     BACKGROUND_PATH = PATHS.IMAGE_PATH_INSTRUCTIONS
     STATUS = GAME.STATUS_INSTRUCTIONS
 
-    ## Margen lateral del texto como fracción del ancho
-    TEXT_MARGIN = 0.08
+    TEXT_MARGIN = 0.08   #: side margin as a fraction of the width
     LINE_HEIGHT = 45
-    ## Espacio extra entre instrucciones distintas
-    PARAGRAPH_GAP = 14
+    PARAGRAPH_GAP = 14   #: extra space between separate instructions
 
     def __init__(self, director):
         super().__init__(director)
@@ -79,7 +44,7 @@ class Instructions(StaticScreen):
             "instructions.line_back",
         ]
 
-        ## Cada instrucción se parte en las líneas que hagan falta
+        # Each instruction is wrapped into as many lines as needed
         y = int(h * 0.24)
         for key in instruction_keys:
             for line in wrap_text(t(key), font_text, max_width):

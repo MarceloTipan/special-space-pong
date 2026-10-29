@@ -19,21 +19,23 @@ class Director:
 
     #: Window caption per game status.
     CAPTIONS = {
-        GAME.STATUS_MENU:         "Pong - Menu",
-        GAME.STATUS_INSTRUCTIONS: "Pong - How to Play",
-        GAME.STATUS_CREDITS:      "Pong - Credits",
-        GAME.STATUS_SETTINGS:     "Pong - Settings",
-        GAME.STATUS_LOADING:      "Pong - Loading",
-        GAME.STATUS_GAME:         "Pong - Game",
-        GAME.STATUS_HIGHSCORES:   "Pong - High Scores",
-        GAME.STATUS_NAME_ENTRY:   "Pong - New Record",
+        GAME.STATUS_MENU:         "special-space-pong | Menu |",
+        GAME.STATUS_INSTRUCTIONS: "special-space-pong | How to Play |",
+        GAME.STATUS_CREDITS:      "special-space-pong | Credits |",
+        GAME.STATUS_SETTINGS:     "special-space-pong | Settings |",
+        GAME.STATUS_LOADING:      "special-space-pong | Loading |",
+        GAME.STATUS_GAME:         "special-space-pong | Game |",
+        GAME.STATUS_HIGHSCORES:   "special-space-pong | High Scores |",
+        GAME.STATUS_NAME_ENTRY:   "special-space-pong | New Record |",
     }
 
     #: Statuses that share the menu music.
     MENU_STATUSES = {
-        GAME.STATUS_MENU, GAME.STATUS_INSTRUCTIONS,
-        GAME.STATUS_CREDITS, GAME.STATUS_SETTINGS,
-        GAME.STATUS_HIGHSCORES, GAME.STATUS_NAME_ENTRY,
+        GAME.STATUS_MENU, 
+        GAME.STATUS_INSTRUCTIONS,
+        GAME.STATUS_SETTINGS,
+        GAME.STATUS_HIGHSCORES, 
+        GAME.STATUS_NAME_ENTRY,
     }
 
     def __init__(self):
@@ -114,6 +116,8 @@ class Director:
         """Pick music by scene group: menu music, game music, or silence."""
         if self.status in self.MENU_STATUSES:
             self.audio.play_music(PATHS.MUSIC_PATH_MENU)
+        elif self.status == GAME.STATUS_CREDITS:
+            self.audio.play_music(PATHS.MUSIC_PATH_CREDITS)
         elif self.status == GAME.STATUS_GAME:
             self.audio.play_music(PATHS.MUSIC_PATH_GAME)
         else:

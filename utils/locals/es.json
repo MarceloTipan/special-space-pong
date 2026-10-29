@@ -18,9 +18,9 @@
     "title": "CREDITOS",
     "back": "VOLVER",
     "roles": {
-      "development": "DESARROLLO",
-      "original_team": "EQUIPO ORIGINAL",
-      "thanks": "AGRADECIMIENTOS"
+      "development": "DESARROLLO",  "art": "ARTE",  "music": "MÚSICA",
+      "sfx": "EFECTOS DE SONIDO",  "fonts": "TIPOGRAFÍA",
+      "built_with": "HECHO CON",  "thanks": "AGRADECIMIENTOS"
     },
     "thanks_text": "Gracias por jugar!"
   },
@@ -35,7 +35,10 @@
     "level_lost": "NIVEL PERDIDO",
     "retry": "REINTENTAR",
     "continue": "CONTINUAR",
-    "victory": "VICTORIA"
+    "victory": "VICTORIA",
+    "pause_hint": "ESPACIO PARA JUGAR",
+    "control_hint": "CONTROL: {mode}",
+    "no_camera": "SIN CÁMARA: SE USA EL MOUSE"
   },
   "loading": {
     "text": "CARGANDO..."
@@ -51,7 +54,14 @@
     "volume": "VOLUMEN",
     "language": "IDIOMA",
     "fullscreen": "PANTALLA COMPLETA",
-    "difficulty": "DIFICULTAD"
+    "difficulty": "DIFICULTAD",
+    "control": "CONTROL", 
+    "camera_invert": "INVERTIR CÁMARA"
+  },
+  "control":  { 
+    "camera": "CÁMARA", 
+    "mouse": "MOUSE", 
+    "keyboard": "TECLADO" 
   },
   "highscores": {
     "title": "MEJORES PUNTAJES",

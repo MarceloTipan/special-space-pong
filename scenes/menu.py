@@ -1,25 +1,9 @@
-#!/usr/bin/env python
-# -*- coding: utf-8 -*-
+"""Main menu: the first screen shown at startup.
 
-"""! @brief La clase Menu muestra la pantalla de Inicio."""
-
-##
-# @file menu.py
-#
-# @brief Define la clase Menu.
-#
-# @section description_menu Descripción
-# Carga la pantalla de inicio, con el fondo y los botones de navegación.
-# - Menu (clase)
-#
-# @section notes_menu Notas
-# - Reacciona a eventos de ratón (movimiento y clic) para navegar entre pantallas.
-# - Los textos provienen del módulo i18n (locales/*.json).
-#
-# @section author_menu Autores
-# - Marcelo Tipán
-#
-# Copyright (c) 2021 Proyecto_Pong.  All rights reserved.
+Background plus navigation buttons. The two primary actions (Play, Exit)
+are large text buttons; the secondary ones (how to play, credits, high
+scores, settings) are a column of icon buttons. All text comes from i18n.
+"""
 
 import pygame
 
@@ -32,38 +16,28 @@ from utils.i18n import t
 
 
 class Menu(Scene):
-    """! Escena inicial del juego, la primera que se carga al iniciar."""
+    """Initial game scene, loaded first on startup."""
 
     def __init__(self, director):
-        """! Inicializa recursos (fondo, fuente, sonido) y crea los botones.
-             @param director  Objeto de la clase Director.
-        """
         super().__init__(director)
         director.status = GAME.STATUS_MENU
 
-        # --- Recursos cargados UNA sola vez (no en cada frame) ---
-        ## Fondo ya escalado al tamaño de la pantalla
+        # Background loaded and scaled once (not every frame)
         self.background = pygame.transform.scale(
             pygame.image.load(PATHS.IMAGE_PATH_MENU).convert(),
             GAME.SCREEN_SIZE,
         )
 
-        ## Sonido único del juego, propiedad del Director
         self.audio = director.audio
-
         font_config = (str(PATHS.FONT_PATH_ARCADE), FONTS.LARGE)
 
-        # --- Definición declarativa de los botones ---
-        # (offset vertical, clave de texto i18n, acción, kwargs extra)
+        # Primary actions as large buttons: (vertical offset, i18n key, action, extra kwargs)
         cx = GAME.SCREEN_WIDTH // 2
         cy = GAME.SCREEN_HEIGHT // 2
-        ## Solo las acciones primarias como botones grandes
         button_defs = [
             (-20, "menu.start", self._go_to_loading, {"hover_color": UI.COLORS["YELLOW"]}),
-            ( 30, "menu.exit",  director.quit,       {}),
+            (30, "menu.exit", director.quit, {}),
         ]
-
-        ## Botones del menú, generados desde button_defs
         self.menu_buttons = [
             TextButton(
                 pos=(cx, cy + offset),
@@ -76,21 +50,21 @@ class Menu(Scene):
             for offset, text_key, action, extra in button_defs
         ]
 
-        ## Acciones secundarias: fila de íconos abajo a la derecha
-        ## (de izquierda a derecha: como jugar, records, créditos, config)
+        # Secondary actions: column of icons at the bottom-right
         icon_defs = [
-            ("info",     "ICON_INFO",     self._go_to_instructions),
-            ("trophy",   "ICON_TROPHY",   self._go_to_highscores),
-            ("question", "ICON_CREDITS",  self._go_to_credits),
-            ("gear",     "ICON_SETTINGS", self._go_to_settings),
+            ("info", "ICON_INFO", self._go_to_instructions),
+            ("question", "ICON_CREDITS", self._go_to_credits),
+            ("trophy", "ICON_TROPHY", self._go_to_highscores),
+            ("gear", "ICON_SETTINGS", self._go_to_settings),
         ]
-        icon_y = GAME.SCREEN_HEIGHT - 45
         icon_x = GAME.SCREEN_WIDTH - 45
+        icon_y = GAME.SCREEN_HEIGHT - 45
+        icon_spacing = 45
         for i, (icon, path_name, action) in enumerate(reversed(icon_defs)):
             self.menu_buttons.append(IconButton(
-                pos=(icon_x - i * 62, icon_y),
+                pos=(icon_x, icon_y - i * icon_spacing),
                 action=action,
-                size=48,
+                size=35,
                 icon=icon,
                 image_path=getattr(PATHS, path_name, None),
                 hover_color=UI.COLORS["YELLOW"],
@@ -98,7 +72,7 @@ class Menu(Scene):
             ))
 
     # ------------------------------------------------------------------
-    # Acciones de los botones
+    # Button actions
     # ------------------------------------------------------------------
     def _go_to_loading(self):
         self.director.change_scene(loading_screen.LoadingScreen(self.director))
@@ -117,13 +91,9 @@ class Menu(Scene):
         self.director.change_scene(highscores_screen.Highscores(self.director))
 
     # ------------------------------------------------------------------
-    # Funciones heredadas de la clase Scene
+    # Scene hooks
     # ------------------------------------------------------------------
-    def on_update(self):
-        pass
-
     def on_event(self, event):
-        """! Solo procesa los eventos relevantes en lugar de hacer polling."""
         if event.type in (pygame.MOUSEMOTION, pygame.MOUSEBUTTONDOWN):
             mouse_pos = pygame.mouse.get_pos()
             clicked = event.type == pygame.MOUSEBUTTONDOWN and event.button == 1

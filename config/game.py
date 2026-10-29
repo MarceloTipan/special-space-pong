@@ -8,7 +8,9 @@ class GameConfig:
     SCREEN_HEIGHT =  1000 #|663 # 663* 720 768 800**
     SCREEN_SIZE = (SCREEN_WIDTH, SCREEN_HEIGHT)
     FPS = 60
-        
+
+    DEBUG = True
+
     # Director's statuses
     STATUS_MENU = 0
     STATUS_INSTRUCTIONS = 1

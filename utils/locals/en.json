@@ -18,9 +18,9 @@
     "title": "CREDITS",
     "back": "BACK",
     "roles": {
-      "development": "DEVELOPMENT",
-      "original_team": "ORIGINAL TEAM",
-      "thanks": "SPECIAL THANKS"
+      "development": "DEVELOPMENT",  "art": "ART",  "music": "MUSIC",
+      "sfx": "SOUND EFFECTS",  "fonts": "FONTS",
+      "built_with": "BUILT WITH",  "thanks": "SPECIAL THANKS"
     },
     "thanks_text": "Thanks for playing!"
   },
@@ -35,7 +35,10 @@
     "level_lost": "LEVEL FAILED",
     "retry": "RETRY",
     "continue": "CONTINUE",
-    "victory": "VICTORY"
+    "victory": "VICTORY",
+    "pause_hint": "SPACE TO PLAY",
+    "control_hint": "CONTROL: {mode}",
+    "no_camera": "NO CAMERA: USE ARROW KEYS"
   },
   "loading": {
     "text": "LOADING..."
@@ -51,7 +54,14 @@
     "volume": "VOLUME",
     "language": "LANGUAGE",
     "fullscreen": "FULLSCREEN",
-    "difficulty": "DIFFICULTY"
+    "difficulty": "DIFFICULTY",
+    "control": "CONTROL", 
+    "camera_invert": "INVERT CAMERA"
+  },
+  "control":  { 
+    "camera": "CAMERA", 
+    "mouse": "MOUSE", 
+    "keyboard": "KEYBOARD" 
   },
   "highscores": {
     "title": "HIGH SCORES",

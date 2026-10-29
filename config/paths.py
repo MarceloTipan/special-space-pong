@@ -20,6 +20,7 @@ class PathConfig:
     #: Local files
     SETTINGS_FILE = BASE_DIR / "settings.json"
     HIGHSCORES_FILE = BASE_DIR / "highscores.json"
+    DATA_PATH_CREDITS = BASE_DIR / "credits.json"
 
     #: Font files
     FONT_PATH_ARCADE = FONT_DIR / "PressStart2P-Regular.TTF"
@@ -44,19 +45,31 @@ class PathConfig:
     IMAGE_PATH_HEART_EMPTY = IMAGE_DIR / "HUD" / "heart_empty.png"
 
     #: Icon files
-    ICON_INFO = IMAGE_DIR / "icon" / "icon.png"
-    ICON_TROPHY = IMAGE_DIR / "icon" / "icon.png"
-    ICON_CREDITS = IMAGE_DIR / "icon" / "icon.png"
-    ICON_SETTINGS = IMAGE_DIR / "icon" / "icon.png"
+    ICON_INFO = IMAGE_DIR / "icon" / "info.png"
+    ICON_TROPHY = IMAGE_DIR / "icon" / "trophy.png"
+    ICON_CREDITS = IMAGE_DIR / "icon" / "credits.png"
+    ICON_SETTINGS = IMAGE_DIR / "icon" / "settings.png"
 
     #: Sound files
-    MUSIC_PATH_MENU = SOUND_DIR / "menu" / "menu.ogg"
-    MUSIC_PATH_GAME = SOUND_DIR / "menu" / "menu.ogg"
+    MUSIC_PATH_MENU = SOUND_DIR / "menu" / "menu_song.ogg"
+    MUSIC_PATH_CREDITS = SOUND_DIR / "menu" / "credits_song.ogg"
+    MUSIC_PATH_GAME = SOUND_DIR / "menu" / "game_song.ogg"
 
     SOUND_PATH_HOVER = SOUND_DIR / "button" / "hover_button.mp3"
     SOUND_PATH_CLIC= SOUND_DIR / "button" / "clic_button.wav"
 
     SOUND_PATH_ERROR = SOUND_DIR / "game" / "error.mp3"
-    SOUND_PATH_HIT = SOUND_DIR / "game" / "golpe.mp3"
-    SOUND_PATH_HIT_ENEMY = SOUND_DIR / "game" / "golpe.mp3"
-    SOUND_PATH_HIT_OBSTACLE = SOUND_DIR / "game" / "golpe.mp3"
+    SOUND_PATH_GOAL = SOUND_DIR / "game" / "error.mp3"
+
+    SOUND_PATH_HIT_ENEMY_1 = SOUND_DIR / "game" / "hit_enemy_1.ogg"
+    SOUND_PATH_HIT_ENEMY_2 = SOUND_DIR / "game" / "hit_enemy_2.ogg"
+    SOUND_PATH_HIT_ENEMY_3 = SOUND_DIR / "game" / "hit_enemy_3.ogg"
+    SOUND_PATH_HIT_ENEMY_4 = SOUND_DIR / "game" / "hit_enemy_4.ogg"
+
+    SOUND_PATH_HIT = SOUND_DIR / "game" / "hit_enemy_2.ogg"
+
+    SOUND_PATH_HIT_PLAYER = SOUND_DIR / "button" / "hover_button.mp3"
+    SOUND_PATH_HIT_WALL = SOUND_DIR / "button" / "clic_button.wav"
+    SOUND_PATH_HIT_OBSTACLE = SOUND_DIR / "game" / "hit_enemy_3.ogg"
+
+    SOUND_PATH_CHIP = SOUND_DIR / "button" / "hover_button.mp3"

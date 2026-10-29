@@ -1,22 +1,9 @@
-#!/usr/bin/env python
-# -*- coding: utf-8 -*-
+"""Base class for static screens (background + buttons).
 
-"""! @brief Clase base para pantallas estáticas (fondo + botones)."""
-
-##
-# @file static_screen.py
-#
-# @brief Define la clase StaticScreen.
-#
-# @section description_static Descripción
-# Base compartida para pantallas simples como Instrucciones y Créditos:
-# carga el fondo una sola vez, gestiona los botones y permite volver
-# al menú con el botón o con la tecla ESC.
-#
-# @section author_static Autores
-# - Marcelo Tipán
-#
-# Copyright (c) 2021 Proyecto_Pong.  All rights reserved.
+Shared base for simple screens like Instructions, Credits and High Scores:
+loads the background once, manages the buttons, and returns to the menu on
+the Back button or the ESC key. Subclasses add content via draw_content.
+"""
 
 import pygame
 
@@ -27,33 +14,25 @@ from config import FONTS, PATHS, UI, GAME
 
 
 class StaticScreen(Scene):
-    """! Pantalla con fondo fijo, botones y regreso al menú (clic o ESC)."""
+    """Screen with a fixed background, buttons and menu return (click or ESC)."""
 
-    ## Ruta de la imagen de fondo (la define cada subclase)
-    BACKGROUND_PATH = None
-    ## Estado del director asociado a la pantalla (lo define cada subclase)
-    STATUS = None
-    ## Clave i18n del botón de volver
-    BACK_TEXT_KEY = "common.back"
+    BACKGROUND_PATH = None         #: background image path (set by each subclass)
+    STATUS = None                  #: director status for this screen (set by subclass)
+    BACK_TEXT_KEY = "common.back"  #: i18n key for the Back button
 
     def __init__(self, director):
-        """! Carga fondo, fuente y botón de volver.
-             @param director  Objeto de la clase Director.
-        """
         super().__init__(director)
         director.status = self.STATUS
 
-        ## Fondo cargado y escalado UNA sola vez
+        # Background loaded and scaled once (not every frame)
         self.background = pygame.transform.scale(
             pygame.image.load(self.BACKGROUND_PATH).convert(),
             GAME.SCREEN_SIZE,
         )
 
-        ## Sonido único del juego, propiedad del Director
         self.audio = director.audio
         self.font_config = (str(PATHS.FONT_PATH_ARCADE), FONTS.LARGE)
 
-        ## Botón de volver, con la misma fuente arcade del menú
         self.buttons = [
             TextButton(
                 pos=(GAME.SCREEN_WIDTH // 2, GAME.SCREEN_HEIGHT - 60),
@@ -66,13 +45,13 @@ class StaticScreen(Scene):
         ]
 
     def go_back(self):
-        """! Regresa al menú principal."""
-        # Import local para evitar el ciclo menu <-> static_screen
+        """Return to the main menu."""
+        # Local import to avoid the menu <-> static_screen cycle
         from scenes import menu
         self.director.change_scene(menu.Menu(self.director))
 
     # ------------------------------------------------------------------
-    # Funciones heredadas de la clase Scene
+    # Scene hooks
     # ------------------------------------------------------------------
     def on_event(self, event):
         if event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
@@ -90,6 +69,4 @@ class StaticScreen(Scene):
             button.draw(screen)
 
     def draw_content(self, screen):
-        """! Punto de extensión: las subclases dibujan aquí su contenido
-             (texto de instrucciones, créditos con scroll, etc.)."""
-        pass
+        """Extension point: subclasses draw their own content here."""
