@@ -10,9 +10,9 @@ Stored in settings.json at the project root. Usage:
 """
 
 import json
-from pathlib import Path
+from config import PATHS
 
-SETTINGS_FILE = Path(__file__).resolve().parent.parent / "settings.json"
+SETTINGS_FILE = PATHS.SETTINGS_FILE
 
 #: Default values; this dict also defines which keys are valid.
 DEFAULTS = {

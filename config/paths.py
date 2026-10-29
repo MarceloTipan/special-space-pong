@@ -10,17 +10,17 @@ class PathConfig:
     CONFIG_DIR = BASE_DIR / 'config'
     UTILS_DIR = BASE_DIR / 'utils'
     ASSETS_DIR = BASE_DIR / 'assets'
+    LOCALS_DIR = BASE_DIR / 'locals'
 
     FONT_DIR = ASSETS_DIR / 'fonts'
     IMAGE_DIR = ASSETS_DIR / 'images'
     SOUND_DIR = ASSETS_DIR / 'sounds'
 
-    LOCALS_DIR = UTILS_DIR / 'locals'
-
     #: Local files
-    SETTINGS_FILE = BASE_DIR / "settings.json"
-    HIGHSCORES_FILE = BASE_DIR / "highscores.json"
-    DATA_PATH_CREDITS = BASE_DIR / "credits.json"
+    LANGUAGES_FILE = LOCALS_DIR / "i18n"
+    SETTINGS_FILE = LOCALS_DIR / "settings.json"
+    HIGHSCORES_FILE = LOCALS_DIR / "highscores.json"
+    CREDITS_FILE = LOCALS_DIR / "credits.json"
 
     #: Font files
     FONT_PATH_ARCADE = FONT_DIR / "PressStart2P-Regular.TTF"

@@ -13,7 +13,7 @@ new language is just dropping in another JSON file; no code changes needed.
 import json
 from config import PATHS
 
-LOCALS_DIR = PATHS.LOCALS_DIR
+LOCALS_DIR = PATHS.LANGUAGES_FILE
 
 #: Language used as fallback when a key or file is missing.
 DEFAULT_LANGUAGE = "es"

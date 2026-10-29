@@ -180,7 +180,7 @@ class Credits(StaticScreen):
 
     def _credits_file_candidates(self):
         """Yield the paths to try for credits.json, configured path first."""
-        configured = getattr(PATHS, "DATA_PATH_CREDITS", None)
+        configured = getattr(PATHS, "CREDITS_FILE", None)
         if configured:
             yield Path(configured)
 
