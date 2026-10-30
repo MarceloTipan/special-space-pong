@@ -23,18 +23,20 @@ class NameEntry(scene.Scene):
     LETTER_SPACING = 90
     BLINK_MS = 400   #: active-letter cursor blink (ms)
 
-    def __init__(self, director, points, level):
+    def __init__(self, director, points, mode, **details):
         """Build the entry screen.
 
         Args:
             points: Score achieved in the game.
-            level: Highest level reached.
+            mode: High score table to save it in (see utils.highscores).
+            **details: How far the player got (level=... or seconds=...).
         """
         super().__init__(director)
         director.status = GAME.STATUS_NAME_ENTRY
 
         self.points = points
-        self.level = level
+        self.mode = mode
+        self.details = details
 
         self.background = pygame.transform.scale(
             pygame.image.load(PATHS.IMAGE_PATH_MENU).convert(),
@@ -68,11 +70,11 @@ class NameEntry(scene.Scene):
 
     def _confirm(self):
         """Save the record and go to the table, highlighting the position."""
-        position = highscores.add(self._initials(), self.points, self.level)
+        position = highscores.add(self._initials(), self.points, self.mode, **self.details)
         self.director.audio.play_click()
         from scenes import highscores_screen
         self.director.change_scene(
-            highscores_screen.Highscores(self.director, highlight=position))
+            highscores_screen.Highscores(self.director, mode=self.mode, highlight=position))
 
     # ------------------------------------------------------------------
     # Scene hooks

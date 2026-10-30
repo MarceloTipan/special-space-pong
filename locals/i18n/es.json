@@ -91,5 +91,16 @@
     "storm": "TORMENTA",
     "chaos": "CAOS TOTAL",
     "secret": "DOBLE DEFENSA"
-  }
+  },
+  "modes": {
+      "title": "MODO DE JUEGO",
+      "campaign": "NIVELES",
+      "campaign_hint": "5 NIVELES CONTRA UN RIVAL",
+      "survival": "SUPERVIVENCIA",
+      "survival_hint": "SIN RIVAL: SOLO LA PELOTA ROJA QUITA VIDAS"
+    },
+    "survival": {
+      "banner_hint": "SOLO LA ROJA QUITA VIDAS",
+      "result": "PUNTOS {points}   TIEMPO {time}"
+    }
 }
