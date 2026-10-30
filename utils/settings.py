@@ -10,9 +10,9 @@ Stored in settings.json at the project root. Usage:
 """
 
 import json
-from config import PATHS
+from pathlib import Path
 
-SETTINGS_FILE = PATHS.SETTINGS_FILE
+SETTINGS_FILE = Path(__file__).resolve().parent.parent / "settings.json"
 
 #: Default values; this dict also defines which keys are valid.
 DEFAULTS = {
@@ -22,6 +22,8 @@ DEFAULTS = {
     "difficulty": "normal",
     "control": "camera",        # camera | mouse | keyboard
     "camera_invert": False,     # for cameras whose driver already mirrors the image
+    "camera_range": None,       # [left, right] image span the hand sweeps; None = not calibrated
+    "camera_height": None,      # height in the image where the hand plays (0 top, 1 bottom)
 }
 
 _data = dict(DEFAULTS)

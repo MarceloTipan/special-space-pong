@@ -84,8 +84,7 @@ class Settings(StaticScreen):
         # Only relevant (and only shown) when playing with the camera
         if control == "camera":
             self._add_toggle("camera_invert", "settings.camera_invert", "camera_invert",
-                             lambda: settings.set("camera_invert",
-                                                  not settings.get("camera_invert")))
+                             self._toggle_camera_invert)
 
     # ------------------------------------------------------------------
     # Row builders
@@ -149,6 +148,16 @@ class Settings(StaticScreen):
         idx = options.index(current) if current in options else 0
         settings.set(key, options[(idx + step) % len(options)])
         self.director.change_scene(Settings(self.director))
+
+    @staticmethod
+    def _toggle_camera_invert():
+        settings.set("camera_invert", not settings.get("camera_invert"))
+        # The calibrated span was measured on the image the other way round:
+        # mirror it too, so the player doesn't need to calibrate again
+        camera_range = settings.get("camera_range")
+        if camera_range:
+            left, right = camera_range
+            settings.set("camera_range", [round(1 - right, 4), round(1 - left, 4)])
 
     def _toggle_fullscreen(self):
         settings.set("fullscreen", not settings.get("fullscreen"))

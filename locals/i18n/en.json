@@ -43,7 +43,12 @@
     "secret_level": "SECRET LEVEL",
     "secret_found": "SECRET!",
     "secret_unlocked": "YOU UNLOCKED THE SECRET LEVEL",
-    "secret_hint": "HINT: WIN IT ALL WITHOUT RETRYING"
+    "secret_hint": "HINT: WIN IT ALL WITHOUT RETRYING",
+    "calibrate": "CALIBRAR (C)",
+    "calibration_title": "CALIBRAR",
+    "calibration_hint": "MUEVE LA MANO DE UN LADO A OTRO",
+    "calibration_done": "CALIBRADO CORRECTAMENTE",
+    "calibration_failed": "MOVIMIENTO INSUFICIENTE: PRUEBA OTRA VEZ (C)"
   },
   "loading": {
     "text": "LOADING..."

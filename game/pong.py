@@ -6,6 +6,8 @@ multiball, procedurally generated asteroids, a five-level campaign plus a
 secret level, a top HUD bar, pause and per-level result screens. The
 player's paddle follows the hand through the webcam (MotionController), the
 mouse, or the arrow keys, depending on the control chosen in Settings.
+Playing with the camera adds a calibration step and some assists, since a
+hand tracked by a webcam is slower and less precise than a mouse.
 
 Every balance number (speeds, balls, asteroids, enemy skill per level)
 lives in game/levels.py.
@@ -19,7 +21,7 @@ import pygame
 from core import Scene
 from game import levels, motion
 from game.ball import Ball
-from game.enemy import Blocker, Enemy
+from game.enemy import Blocker, Enemy, predict_landing
 from game.obstacle import Obstacle
 from game.starfield import Starfield
 from ui import TextButton
@@ -87,10 +89,21 @@ class Pong(Scene):
     CONTROLS = (CONTROL_CAMERA, CONTROL_MOUSE, CONTROL_KEYBOARD)
     PADDLE_KEY_SPEED = 400    #: keyboard paddle speed (px/s)
     PADDLE_MAX_SPEED = 1600   #: speed cap when following the mouse or the hand (px/s)
-    #: How fast the paddle catches up with its target (1/s). The hand gets a
-    #: softer follow because its detection is noisier than the mouse.
-    FOLLOW_RATE = {CONTROL_MOUSE: 30.0, CONTROL_CAMERA: 14.0}
+    #: How fast the paddle catches up with its target (1/s). The hand
+    #: position arrives already filtered by the tracker (see game/motion.py).
+    FOLLOW_RATE = {CONTROL_MOUSE: 30.0, CONTROL_CAMERA: 30.0}
     PREVIEW_SIZE = (192, 144)   #: camera preview on the pause screen
+
+    # --- Camera assists: a webcam is slower and less precise than a mouse ---
+    CAMERA_PADDLE_SCALE = 1.3   #: wider paddle
+    CAMERA_BALL_SPEED = 0.85    #: slower balls
+    MARKER_TIME = 1.2           #: show where a ball will land this long before it does
+
+    # --- Camera calibration ---
+    CALIBRATION_TIME = 4.0          #: seconds the player sweeps the hand
+    CALIBRATION_MIN_SPAN = 0.2      #: narrower sweeps (image share) are rejected
+    CALIBRATION_PERCENTILES = (5, 95)   #: ignore the outermost detections
+    CALIBRATION_PREVIEW = (320, 240)
 
     # --- HUD ---
     HUD_CENTER_Y = 30
@@ -142,7 +155,9 @@ class Pong(Scene):
         """Open the camera only if the camera control is selected."""
         if settings.get("control") != cls.CONTROL_CAMERA:
             return None
-        return motion.MotionController(mirror=not settings.get("camera_invert"))
+        return motion.MotionController(mirror=not settings.get("camera_invert"),
+                                       camera_range=settings.get("camera_range"),
+                                       hand_height=settings.get("camera_height"))
 
     @staticmethod
     def _load_asteroid():
@@ -184,7 +199,11 @@ class Pong(Scene):
 
         self._setup_geometry()
         self._setup_hud()
+        self.calibration = None        # {"time": s left, "samples": [...]} while calibrating
+        self.calibration_note = None   # result of the last calibration, for the pause screen
         self._reset_game()
+        if self.control == self.CONTROL_CAMERA and settings.get("camera_range") is None:
+            self._start_calibration()   # first game with the camera
 
     def _setup_control(self, detector):
         """Pick the paddle control, falling back to the mouse without a camera."""
@@ -204,7 +223,12 @@ class Pong(Scene):
         """Cache sprite sizes, derive paddle positions and create the enemy."""
         self.ball_w = self.images["ball"].get_width()
         self.ball_h = self.images["ball"].get_height()
-        self.paddle_w = self.images["paddle"].get_width()
+        self.paddle_image = self.images["paddle"]
+        if self.control == self.CONTROL_CAMERA:
+            size = (int(self.paddle_image.get_width() * self.CAMERA_PADDLE_SCALE),
+                    self.paddle_image.get_height())
+            self.paddle_image = pygame.transform.scale(self.paddle_image, size)
+        self.paddle_w = self.paddle_image.get_width()
         self.enemy_w = self.images["paddle_top"].get_width()
 
         self.paddle_y = self.FIELD_BOTTOM - self.images["paddle"].get_height() - 10
@@ -242,6 +266,11 @@ class Pong(Scene):
         self.text_secret_unlocked = self._note(t("game.secret_unlocked"), white)
         self.text_secret_hint = self._note(t("game.secret_hint"), gray)
         self.label_level = self.font_hud.render(t("game.hud_level"), True, white)
+        self.text_calibration_title = self._title(t("game.calibration_title"), yellow)
+        self.text_calibration_hint = self._note(t("game.calibration_hint"), white)
+        self.text_calibration_done = self._note(t("game.calibration_done"), yellow)
+        self.text_calibration_failed = self._note(t("game.calibration_failed"), yellow)
+        self.landing_marker = self._make_landing_marker(yellow)
 
         self.overlay_backdrop = pygame.Surface(GAME.SCREEN_SIZE)
         self.overlay_backdrop.set_alpha(160)
@@ -280,6 +309,9 @@ class Pong(Scene):
                 pos=(cx, cy + y_offset), text=t(text_key),
                 font_config=(self.font_path, FONTS.MEDIUM), action=action,
                 hover_color=yellow, audio=self.audio)
+
+        #: Shown on the pause screen when playing with the camera
+        self.pause_buttons = [overlay_button(330, "game.calibrate", self._start_calibration)]
 
         self.overlay_buttons = {
             self.LEVEL_WON: [overlay_button(80, "game.continue", self._on_continue)],
@@ -378,6 +410,8 @@ class Pong(Scene):
     def _toggle_pause(self):
         """SPACE or the pause button: toggle the pause while playing, or run
         the result screen's main action (continue, retry or finish)."""
+        if self.calibration is not None:
+            return   # finish calibrating first
         primary_action = {
             self.LEVEL_WON: self._on_continue,
             self.LEVEL_LOST: self._on_retry,
@@ -421,6 +455,8 @@ class Pong(Scene):
         if missing <= 0:
             return
         speed = self.config.ball_speed * self.difficulty.speed_scale
+        if self.control == self.CONTROL_CAMERA:
+            speed *= self.CAMERA_BALL_SPEED
         x = GAME.SCREEN_WIDTH / 2 - self.ball_w / 2
         y = (self.FIELD_TOP + self.FIELD_BOTTOM) / 2 - self.ball_h / 2
         for i in range(missing):
@@ -676,6 +712,52 @@ class Pong(Scene):
         ball.vy = math.copysign(math.sqrt(speed * speed - min_vx * min_vx), ball.vy)
 
     # ------------------------------------------------------------------
+    # Camera calibration
+    # ------------------------------------------------------------------
+    def _can_calibrate(self):
+        """Calibration is offered on the pause screen when using the camera."""
+        return (self.control == self.CONTROL_CAMERA and self.paused
+                and self.match_state == self.PLAYING and self.calibration is None)
+
+    def _start_calibration(self):
+        """Ask the player to sweep the hand, to learn which part of the
+        camera image it covers and at what height it plays."""
+        self.paused = True
+        self.calibration = {"time": self.CALIBRATION_TIME, "x": [], "y": []}
+        self.calibration_note = None
+        self.detector.calibrating = True   # follow the biggest movement: the sweeping hand
+
+    def _update_calibration(self, dt):
+        """Collect where the hand is seen; when time is up, save what was learned."""
+        if self.detector.raw_x is not None and self.detector.blob is not None:
+            _, y, _, h = self.detector.blob
+            self.calibration["x"].append(self.detector.raw_x)
+            self.calibration["y"].append(y + h / 2)
+        self.calibration["time"] -= dt
+        if self.calibration["time"] <= 0:
+            self._finish_calibration()
+
+    def _finish_calibration(self):
+        """Map the span the hand swept to the whole field (outermost
+        detections ignored) and remember the height it moved at."""
+        xs, ys = sorted(self.calibration["x"]), sorted(self.calibration["y"])
+        self.calibration = None
+        self.detector.calibrating = False
+        self.calibration_note = self.text_calibration_failed
+        if len(xs) < 10:
+            return
+        low, high = self.CALIBRATION_PERCENTILES
+        left = round(xs[int(len(xs) * low / 100)], 4)
+        right = round(xs[min(len(xs) - 1, int(len(xs) * high / 100))], 4)
+        if right - left < self.CALIBRATION_MIN_SPAN:
+            return
+        height = round(ys[len(ys) // 2], 4)   # median
+        self.detector.set_calibration(left, right, height)
+        settings.set("camera_range", [left, right])
+        settings.set("camera_height", height)
+        self.calibration_note = self.text_calibration_done
+
+    # ------------------------------------------------------------------
     # Scene hooks
     # ------------------------------------------------------------------
     def on_event(self, event):
@@ -684,6 +766,8 @@ class Pong(Scene):
                 self._toggle_pause()
             elif event.key == pygame.K_ESCAPE:
                 self._end_match()
+            elif event.key == pygame.K_c and self._can_calibrate():
+                self._start_calibration()
             elif self.DEBUG and event.key in (pygame.K_UP, pygame.K_KP_PLUS):
                 self._start_level(self.level + 1)
             elif self.DEBUG and event.key in (pygame.K_DOWN, pygame.K_KP_MINUS):
@@ -691,11 +775,16 @@ class Pong(Scene):
         elif event.type in (pygame.MOUSEMOTION, pygame.MOUSEBUTTONDOWN):
             mouse_pos = pygame.mouse.get_pos()
             clicked = event.type == pygame.MOUSEBUTTONDOWN and event.button == 1
-            for button in (*self.hud_buttons, *self.overlay_buttons.get(self.match_state, ())):
+            buttons = [*self.hud_buttons, *self.overlay_buttons.get(self.match_state, ())]
+            if self._can_calibrate():
+                buttons += self.pause_buttons
+            for button in buttons:
                 button.update(mouse_pos, clicked)
 
     def on_update(self):
         self._update_cursor()
+        if self.calibration is not None:
+            self._update_calibration(self.director.dt)
         if self.paused:
             return
         dt = min(self.director.dt, self.MAX_DT)
@@ -724,12 +813,16 @@ class Pong(Scene):
                 continue   # a ball about to be served blinks
             self._draw_ball_trail(screen, ball)
             screen.blit(self.images["ball"], (ball.x, ball.y))
+        if self.control == self.CONTROL_CAMERA:
+            self._draw_landing_markers(screen)
         screen.blit(self.images["paddle_top"], (self.enemy.x, self.enemy_y))
-        screen.blit(self.images["paddle"], (self.paddle_x, self.paddle_y))
+        screen.blit(self.paddle_image, (self.paddle_x, self.paddle_y))
 
         self._draw_hud(screen)
 
-        if self.match_state in self.overlay_titles:
+        if self.calibration is not None:
+            self._draw_calibration(screen)
+        elif self.match_state in self.overlay_titles:
             self._draw_overlay(screen)
         elif self.paused:
             self._draw_pause(screen)
@@ -793,32 +886,99 @@ class Pong(Scene):
         screen.blit(self.text_pause_hint, self.text_pause_hint.get_rect(center=(cx, cy + 70)))
         screen.blit(self.text_control, self.text_control.get_rect(center=(cx, cy + 105)))
         if self.control == self.CONTROL_CAMERA:
-            self._draw_camera_preview(screen, (cx, cy + 230))
+            if self.calibration_note is not None:
+                note = self.calibration_note
+                screen.blit(note, note.get_rect(center=(cx, cy + 135)))
+            self._draw_camera_preview(screen, (cx, cy + 230), self.PREVIEW_SIZE)
+            for button in self.pause_buttons:
+                button.draw(screen)
 
-    def _draw_camera_preview(self, screen, center):
-        """What the camera sees, its active zone and where it detects the hand.
+    def _draw_calibration(self, screen):
+        """Calibration screen: instructions, a progress bar and the camera
+        view, with the span the hand has covered so far."""
+        screen.blit(self.overlay_backdrop, (0, 0))
+        cx, cy = self.hud_pos["center"]
+        title, hint = self.text_calibration_title, self.text_calibration_hint
+        screen.blit(title, title.get_rect(center=(cx, cy - 170)))
+        screen.blit(hint, hint.get_rect(center=(cx, cy - 110)))
 
-        Lets the player check that the camera is picking them up before
-        playing: the yellow line is the detected hand, the gray lines mark
-        the zone that covers the whole field.
+        bar = pygame.Rect(0, 0, self.CALIBRATION_PREVIEW[0], 12)
+        bar.center = (cx, cy - 75)
+        done = 1 - max(0.0, self.calibration["time"]) / self.CALIBRATION_TIME
+        pygame.draw.rect(screen, UI.COLORS["GRAY"], bar, width=2)
+        pygame.draw.rect(screen, UI.COLORS["YELLOW"],
+                         (bar.x, bar.y, int(bar.width * done), bar.height))
+
+        rect = self._draw_camera_preview(screen, (cx, cy + 70), self.CALIBRATION_PREVIEW)
+        samples = self.calibration["x"]
+        if rect is not None and samples:
+            for x in (min(samples), max(samples)):
+                px = rect.left + int(x * rect.width)
+                pygame.draw.line(screen, UI.COLORS["YELLOW"], (px, rect.top), (px, rect.bottom), 2)
+
+    def _make_landing_marker(self, color):
+        """A ring the size of the ball: where it will meet the paddle."""
+        size = max(self.ball_w, self.ball_h)
+        marker = pygame.Surface((size, size), pygame.SRCALPHA)
+        pygame.draw.circle(marker, color, (size // 2, size // 2), size // 2, width=2)
+        return marker
+
+    def _draw_landing_markers(self, screen):
+        """Mark where each incoming ball will meet the paddle's line: a ring
+        that grows brighter as the ball gets closer. Put the paddle under it.
+        (An asteroid can still change the ball's course.)"""
+        for ball in self.balls:
+            if ball.waiting:
+                continue
+            landing = predict_landing(ball, self.paddle_y - ball.h / 2,
+                                      self.FIELD_LEFT, self.FIELD_RIGHT)
+            if landing is None or landing[1] > self.MARKER_TIME:
+                continue
+            x, seconds = landing
+            self.landing_marker.set_alpha(int(80 + 175 * (1 - seconds / self.MARKER_TIME)))
+            screen.blit(self.landing_marker, self.landing_marker.get_rect(
+                midbottom=(x, self.paddle_y)))
+
+    def _draw_camera_preview(self, screen, center, size):
+        """What the camera sees and what the tracker makes of it.
+
+        Lets the player check that the camera is picking them up: the gray
+        lines mark the calibrated span (it covers the whole field) and the
+        band where the hand is looked for, the cyan box is the detected hand
+        and the yellow line its filtered position, the one the paddle follows.
+
+        Returns:
+            The preview's Rect, or None if there is no frame yet.
         """
         frame = self.detector.preview
         if frame is None:
-            return
+            return None
         h, w = frame.shape[:2]
         image = pygame.transform.scale(
-            pygame.image.frombuffer(frame.tobytes(), (w, h), "RGB"), self.PREVIEW_SIZE)
+            pygame.image.frombuffer(frame.tobytes(), (w, h), "RGB"), size)
         rect = image.get_rect(center=center)
         screen.blit(image, rect)
 
         gray, yellow = UI.COLORS["GRAY"], UI.COLORS["YELLOW"]
         pygame.draw.rect(screen, gray, rect, width=2)
-        margin = int(rect.width * (1 - self.detector.REACH) / 2)
-        for x in (rect.left + margin, rect.right - margin):
-            pygame.draw.line(screen, gray, (x, rect.top), (x, rect.bottom), 1)
-        if self.detector.raw_x is not None:
-            x = rect.left + int(self.detector.raw_x * rect.width)
-            pygame.draw.line(screen, yellow, (x, rect.top), (x, rect.bottom), 3)
+        for x in self.detector.range:
+            px = rect.left + int(x * rect.width)
+            pygame.draw.line(screen, gray, (px, rect.top), (px, rect.bottom), 1)
+        height = self.detector.tracker.hand_height
+        if height is not None and not self.detector.calibrating:
+            band = self.detector.tracker.HEIGHT_BAND
+            for y in (height - band, height + band):
+                py = rect.top + int(min(1, max(0, y)) * rect.height)
+                pygame.draw.line(screen, gray, (rect.left, py), (rect.right, py), 1)
+        if self.detector.blob is not None:
+            bx, by, bw, bh = self.detector.blob
+            pygame.draw.rect(screen, (0, 220, 255),
+                             (rect.left + bx * rect.width, rect.top + by * rect.height,
+                              bw * rect.width, bh * rect.height), width=1)
+        if self.detector.image_x is not None:
+            px = rect.left + int(self.detector.image_x * rect.width)
+            pygame.draw.line(screen, yellow, (px, rect.top), (px, rect.bottom), 3)
+        return rect
 
     def _draw_overlay(self, screen):
         """Result screen: dimmed backdrop, title, final score, buttons and a note."""

@@ -43,7 +43,12 @@
     "secret_level": "NIVEL SECRETO",
     "secret_found": "¡SECRETO!",
     "secret_unlocked": "DESBLOQUEASTE EL NIVEL SECRETO",
-    "secret_hint": "PISTA: GANA TODO SIN REINTENTAR"
+    "secret_hint": "PISTA: GANA TODO SIN REINTENTAR",
+    "calibrate": "CALIBRATE (C)",
+    "calibration_title": "CALIBRATION",
+    "calibration_hint": "MOVE YOUR HAND FROM SIDE TO SIDE",
+    "calibration_done": "CALIBRATED",
+    "calibration_failed": "NOT ENOUGH MOVEMENT: TRY AGAIN (C)"
   },
   "loading": {
     "text": "CARGANDO..."
