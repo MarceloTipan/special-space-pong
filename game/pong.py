@@ -1,10 +1,14 @@
 """Game scene: the match itself.
 
-Ball physics with angular paddle bounces, an enemy paddle driven by a
-deliberately imperfect AI, multiball in the last levels, procedurally
-generated asteroids, a top HUD bar, pause and per-level result screens.
-The player's paddle follows the hand through the webcam (MotionController),
-the mouse, or the arrow keys, depending on the control chosen in Settings.
+Ball physics with angular paddle bounces and rallies that speed up, an
+enemy paddle whose misses depend on how good the player's shots are,
+multiball, procedurally generated asteroids, a five-level campaign plus a
+secret level, a top HUD bar, pause and per-level result screens. The
+player's paddle follows the hand through the webcam (MotionController), the
+mouse, or the arrow keys, depending on the control chosen in Settings.
+
+Every balance number (speeds, balls, asteroids, enemy skill per level)
+lives in game/levels.py.
 """
 
 import math
@@ -13,14 +17,16 @@ import random
 import pygame
 
 from core import Scene
-from game import motion
+from game import levels, motion
 from game.ball import Ball
+from game.enemy import Blocker, Enemy
 from game.obstacle import Obstacle
 from game.starfield import Starfield
 from ui import TextButton
 from ui.pause_button import PauseButton
 from utils import settings
 from utils.i18n import t
+from utils.text import render_fit
 from config import FONTS, PATHS, UI, GAME
 
 
@@ -31,7 +37,11 @@ class Pong(Scene):
     PLAYING = "playing"
     LEVEL_WON = "level_won"
     LEVEL_LOST = "level_lost"
+    SECRET_FOUND = "secret_found"
     VICTORY = "victory"
+
+    # --- Who hit the ball (for sounds, scoring and rally rules) ---
+    PLAYER, ENEMY, BLOCKER = "player", "enemy", "blocker"
 
     #: Enables the level-skip keys (UP/DOWN). Set GAME.DEBUG = True while developing.
     DEBUG = getattr(GAME, "DEBUG", False)
@@ -41,42 +51,30 @@ class Pong(Scene):
     #: through an obstacle.
     MAX_DT = 0.05
 
-    # --- Difficulty ---
     LIVES_MIN, LIVES_MAX = 2, 5
-    #: Lives, goals to win a level and AI multipliers per difficulty.
-    #: enemy_error > 1 = clumsier enemy; enemy_speed > 1 = faster enemy.
-    DIFFICULTY_PRESETS = {
-        "easy":   {"lives": 5, "goals": 3, "enemy_error": 1.4, "enemy_speed": 0.85},
-        "normal": {"lives": 3, "goals": 5, "enemy_error": 1.0, "enemy_speed": 1.0},
-        "hard":   {"lives": 2, "goals": 7, "enemy_error": 0.7, "enemy_speed": 1.15},
-    }
 
-    # --- Levels and scoring ---
-    LEVEL_MAX = 10
-    BASE_SPEED = 80          #: per-axis ball speed at level 0 (px/s)
-    SPEED_PER_LEVEL = 30     #: per-axis speed added each level
-    GOAL_POINTS = 50         #: points for each goal scored
-    POINT_EVERY = 5          #: seconds of play per survival point
-    MAX_BOUNCE_X = 0.75      #: max horizontal share of a paddle bounce
+    # --- Scoring ---
+    GOAL_POINTS = 100        #: points for each goal scored
+    RETURN_POINTS = 10       #: points for each ball the player returns
+    HEART_BONUS = 50         #: points per heart left when a level is won
+
+    # --- Serves and level intro ---
     SERVE_DELAY = 0.6        #: seconds a new ball blinks before launching
     SERVE_STAGGER = 0.4      #: extra wait between balls served together
-
-    # --- Enemy AI: three knobs that scale with the level. Misses emerge
-    # from these limits, never from a per-frame dice roll ---
-    ENEMY_SPEED_BASE = 200              #: enemy paddle speed (px/s)
-    ENEMY_SPEED_PER_LEVEL = 30
-    ENEMY_ERROR_BASE = 130              #: aim error (px), rolled once per play
-    ENEMY_ERROR_PER_LEVEL = 11
-    ENEMY_REACT_FRACTION_BASE = 0.75    #: reacts once the ball is above this fraction of the field
-    ENEMY_REACT_PER_LEVEL = 0.04
+    LEVEL_INTRO_DELAY = 1.2  #: extra wait for the first serve, while the banner shows
+    BANNER_TIME = 2.2        #: seconds the level banner stays on screen
+    BANNER_FADE = 0.6        #: ...the last of which it fades out
 
     # --- Procedural obstacles ---
-    OBSTACLE_START_LEVEL = 3
-    OBSTACLE_MAX = 5
-    OBSTACLE_W = (70, 130)       #: width range
+    OBSTACLE_W = (60, 110)       #: width range
     OBSTACLE_H = (16, 26)        #: height range
     OBSTACLE_GAP = 60            #: min spacing between obstacles and from the serve point
     OBSTACLE_MARGIN_Y = 110      #: obstacle-free band next to each paddle
+    MIN_SIDEWAYS = 0.15          #: min horizontal share of a ball leaving an asteroid
+
+    # --- Blocker (secret level) ---
+    BLOCKER_WIDTH_SCALE = 0.8    #: blocker width relative to the enemy paddle
+    BLOCKER_Y_SHARE = 0.3        #: height in the field (0 top, 1 bottom), above the serve
 
     # --- Field geometry, relative to the screen ---
     FIELD_LEFT = 45
@@ -100,6 +98,7 @@ class Pong(Scene):
     HEART_BLINK_MS = 720
     HEART_BLINK_INTERVAL = 120
     BALL_BLINK_MS = 100      #: blink period of a ball waiting to be served
+    TITLE_MAX_WIDTH = int(GAME.SCREEN_WIDTH * 0.9)   #: big titles shrink to fit this
 
     # ------------------------------------------------------------------
     # Loading (consumed step by step by LoadingScreen)
@@ -121,11 +120,16 @@ class Pong(Scene):
             return pygame.image.load(path).convert_alpha()
 
         heart_size = (cls.HEART_SIZE, cls.HEART_SIZE)
+        paddle_top = load(PATHS.IMAGE_PATH_PADDLE_TOP)
+        blocker_size = (int(paddle_top.get_width() * cls.BLOCKER_WIDTH_SCALE),
+                        paddle_top.get_height())
         return {
             "background": pygame.transform.scale(
                 pygame.image.load(PATHS.IMAGE_PATH_GAME).convert(), GAME.SCREEN_SIZE),
             "ball": load(PATHS.IMAGE_PATH_BALL),
-            "paddle_top": load(PATHS.IMAGE_PATH_PADDLE_TOP),
+            "paddle_top": paddle_top,
+            # Plain (nearest-neighbor) scaling keeps the pixel art crisp
+            "blocker": pygame.transform.scale(paddle_top, blocker_size),
             "paddle": load(PATHS.IMAGE_PATH_PADDLE),
             "heart": pygame.transform.smoothscale(load(PATHS.IMAGE_PATH_HEART), heart_size),
             "heart_empty": pygame.transform.smoothscale(
@@ -171,12 +175,9 @@ class Pong(Scene):
         self.starfield = Starfield(GAME.SCREEN_WIDTH, GAME.SCREEN_HEIGHT)
         self._setup_control(detector)
 
-        preset = self.DIFFICULTY_PRESETS.get(
-            settings.get("difficulty"), self.DIFFICULTY_PRESETS["normal"])
-        self.lives_start = max(self.LIVES_MIN, min(self.LIVES_MAX, preset["lives"]))
-        self.goals_to_win = preset["goals"]
-        self.enemy_error_mult = preset["enemy_error"]
-        self.enemy_speed_mult = preset["enemy_speed"]
+        self.difficulty = levels.DIFFICULTIES.get(
+            settings.get("difficulty"), levels.DIFFICULTIES["normal"])
+        self.lives_start = max(self.LIVES_MIN, min(self.LIVES_MAX, self.difficulty.lives))
 
         self._text_cache = {}    # HUD text, re-rendered only when it changes
         self._trail_cache = {}   # trail dot surfaces, by (radius, alpha)
@@ -200,7 +201,7 @@ class Pong(Scene):
         self._cursor_visible = True
 
     def _setup_geometry(self):
-        """Cache sprite sizes and derive paddle positions and limits."""
+        """Cache sprite sizes, derive paddle positions and create the enemy."""
         self.ball_w = self.images["ball"].get_width()
         self.ball_h = self.images["ball"].get_height()
         self.paddle_w = self.images["paddle"].get_width()
@@ -212,29 +213,34 @@ class Pong(Scene):
 
         self.enemy_y = self.FIELD_TOP + 5
         self.enemy_bottom = self.enemy_y + self.images["paddle_top"].get_height()
-        self.enemy_min_x = self.FIELD_LEFT
-        self.enemy_max_x = self.FIELD_RIGHT - self.enemy_w
+        self.enemy = Enemy(x=0, face_y=self.enemy_bottom, width=self.enemy_w,
+                           left=self.FIELD_LEFT, right=self.FIELD_RIGHT)
+
+        self.blocker_y = int(self.FIELD_TOP
+                             + (self.FIELD_BOTTOM - self.FIELD_TOP) * self.BLOCKER_Y_SHARE)
 
     def _setup_hud(self):
         """Fonts, pre-rendered texts, HUD positions and buttons."""
-        font_path = str(PATHS.FONT_PATH_ARCADE)
-        self.font_hint = pygame.font.Font(font_path, FONTS.SMALL)
-        self.font_hud = pygame.font.Font(font_path, FONTS.MEDIUM)
-        self.font_score = pygame.font.Font(font_path, FONTS.LARGE)
-        self.font_big = pygame.font.Font(font_path, FONTS.LARGE * 2)
+        self.font_path = str(PATHS.FONT_PATH_ARCADE)
+        self.font_hint = pygame.font.Font(self.font_path, FONTS.SMALL)
+        self.font_hud = pygame.font.Font(self.font_path, FONTS.MEDIUM)
+        self.font_score = pygame.font.Font(self.font_path, FONTS.LARGE)
 
         yellow, white, gray = UI.COLORS["YELLOW"], UI.COLORS["WHITE"], UI.COLORS["GRAY"]
-        self.text_pause = self.font_big.render(t("game.paused"), True, yellow)
+        self.text_pause = self._title(t("game.paused"), yellow)
         self.text_pause_hint = self.font_hint.render(t("game.pause_hint"), True, white)
         # Which control is active (or why the camera isn't being used)
         control_line = (t("game.no_camera") if self.camera_missing
                         else t("game.control_hint", mode=t(f"control.{self.control}")))
         self.text_control = self.font_hint.render(control_line, True, gray)
         self.overlay_titles = {
-            self.LEVEL_WON: self.font_big.render(t("game.level_won"), True, yellow),
-            self.LEVEL_LOST: self.font_big.render(t("game.level_lost"), True, yellow),
-            self.VICTORY: self.font_big.render(t("game.victory"), True, yellow),
+            self.LEVEL_WON: self._title(t("game.level_won"), yellow),
+            self.LEVEL_LOST: self._title(t("game.level_lost"), yellow),
+            self.SECRET_FOUND: self._title(t("game.secret_found"), yellow),
+            self.VICTORY: self._title(t("game.victory"), yellow),
         }
+        self.text_secret_unlocked = self._note(t("game.secret_unlocked"), white)
+        self.text_secret_hint = self._note(t("game.secret_hint"), gray)
         self.label_level = self.font_hud.render(t("game.hud_level"), True, white)
 
         self.overlay_backdrop = pygame.Surface(GAME.SCREEN_SIZE)
@@ -260,7 +266,7 @@ class Pong(Scene):
             TextButton(
                 pos=(int(w * 0.90), self.HUD_CENTER_Y),
                 text=t("menu.exit"),
-                font_config=(font_path, FONTS.MEDIUM),
+                font_config=(self.font_path, FONTS.MEDIUM),
                 action=self._end_match,
                 base_color=gray,
                 hover_color=white,
@@ -272,15 +278,24 @@ class Pong(Scene):
         def overlay_button(y_offset, text_key, action):
             return TextButton(
                 pos=(cx, cy + y_offset), text=t(text_key),
-                font_config=(font_path, FONTS.MEDIUM), action=action,
+                font_config=(self.font_path, FONTS.MEDIUM), action=action,
                 hover_color=yellow, audio=self.audio)
 
         self.overlay_buttons = {
             self.LEVEL_WON: [overlay_button(80, "game.continue", self._on_continue)],
             self.LEVEL_LOST: [overlay_button(80, "game.retry", self._on_retry),
                               overlay_button(130, "menu.exit", self._end_match)],
+            self.SECRET_FOUND: [overlay_button(80, "game.continue", self._on_continue)],
             self.VICTORY: [overlay_button(80, "menu.exit", self._end_match)],
         }
+
+    def _title(self, text, color):
+        """A big title, shrunk if needed to fit the screen width."""
+        return render_fit(self.font_path, FONTS.LARGE * 2, text, color, self.TITLE_MAX_WIDTH)
+
+    def _note(self, text, color):
+        """A small line of text, shrunk if needed to fit the screen width."""
+        return render_fit(self.font_path, FONTS.SMALL, text, color, self.TITLE_MAX_WIDTH)
 
     # ------------------------------------------------------------------
     # Match flow
@@ -288,35 +303,77 @@ class Pong(Scene):
     def _reset_game(self):
         """Start a whole new match from level 1."""
         self.points = 0
+        self.retried = False   # winning the campaign without retries unlocks the secret
+        self.show_secret_hint = False
         self._start_level(1)
 
-    def _start_level(self, level):
+    def _start_level(self, number):
         """Prepare a level: full hearts, clean scoreboard and a fresh serve."""
         # Score checkpoint, restored on retry: without it the record could be
         # inflated by replaying the same level over and over
         self.points_checkpoint = self.points
-        self.level = max(1, min(self.LEVEL_MAX, level))
+        self.level = max(1, min(levels.SECRET_LEVEL, number))
+        self.config = levels.get(self.level)
         self.lives = self.lives_start
+        self.goals_to_win = self.config.goals
         self.goals_player = 0
         self.goals_enemy = 0
-        self.point_timer = 0.0
         self.blink_until = 0
         self.match_state = self.PLAYING
         self.paddle_x = (self.paddle_min_x + self.paddle_max_x) / 2
-        self.enemy_x = (self.enemy_min_x + self.enemy_max_x) / 2
-        self.obstacles = self._generate_obstacles(self.level)
+
+        scale = self.difficulty.miss_scale
+        self.enemy.configure(self.config.enemy_speed,
+                             self.config.miss_easy * scale, self.config.miss_hard * scale)
+        self.enemy.center_on_field()
+        self.blocker = None
+        if self.config.blocker_speed:
+            self.blocker = Blocker(
+                y=self.blocker_y, width=self.images["blocker"].get_width(),
+                height=self.images["blocker"].get_height(),
+                left=self.FIELD_LEFT, right=self.FIELD_RIGHT,
+                speed=self.config.blocker_speed)
+
+        self.obstacles = self._generate_obstacles(self.level, self.config.obstacles)
         self.balls = []
-        self._refill_balls()
+        self._refill_balls(extra_delay=self.LEVEL_INTRO_DELAY)
+        self._prepare_banner()
         self.paused = True   # the level waits for the player
+
+    def _prepare_banner(self):
+        """Render the level banner: "LEVEL 3" and the level's name."""
+        if self.level == levels.SECRET_LEVEL:
+            title = t("game.secret_level")
+        else:
+            title = t("game.level_title", n=self.level)
+        self.banner_title = self._title(title, UI.COLORS["YELLOW"])
+        self.banner_name = render_fit(self.font_path, FONTS.LARGE,
+                                      t(f"levels.{self.config.key}"),
+                                      UI.COLORS["WHITE"], self.TITLE_MAX_WIDTH)
+        self.banner_time = self.BANNER_TIME
 
     def _on_continue(self):
         self._start_level(self.level + 1)
         self.paused = False
 
     def _on_retry(self):
+        self.retried = True
         self.points = self.points_checkpoint
         self._start_level(self.level)
         self.paused = False
+
+    def _win_level(self):
+        """The level is won: heart bonus, then the next step of the campaign."""
+        self.points += self.lives * self.HEART_BONUS
+        last = len(levels.CAMPAIGN)
+        if self.level == last and not self.retried:
+            self.match_state = self.SECRET_FOUND
+        elif self.level >= last:
+            self.match_state = self.VICTORY
+            self.show_secret_hint = self.level == last   # won, but with retries
+        else:
+            self.match_state = self.LEVEL_WON
+        self.paused = True
 
     def _toggle_pause(self):
         """SPACE or the pause button: toggle the pause while playing, or run
@@ -324,6 +381,7 @@ class Pong(Scene):
         primary_action = {
             self.LEVEL_WON: self._on_continue,
             self.LEVEL_LOST: self._on_retry,
+            self.SECRET_FOUND: self._on_continue,
             self.VICTORY: self._end_match,
         }.get(self.match_state)
         if primary_action:
@@ -353,35 +411,21 @@ class Pong(Scene):
     # ------------------------------------------------------------------
     # Balls and scoring
     # ------------------------------------------------------------------
-    def _level_speed(self):
-        """Total ball speed for the current level (diagonal of the per-axis speed)."""
-        component = self.BASE_SPEED + self.SPEED_PER_LEVEL * self.level
-        return math.hypot(component, component)
-
-    def _balls_for_level(self):
-        """Simultaneous balls: the last two levels add a second and a third."""
-        if self.level >= self.LEVEL_MAX:
-            return 3
-        if self.level >= self.LEVEL_MAX - 1:
-            return 2
-        return 1
-
-    def _refill_balls(self):
+    def _refill_balls(self, extra_delay=0.0):
         """Serve new balls from the center until the level's ball count is met.
 
         Balls served together launch one after another, so a multiball
         serve stays readable.
         """
-        missing = self._balls_for_level() - len(self.balls)
+        missing = self.config.balls - len(self.balls)
         if missing <= 0:
             return
+        speed = self.config.ball_speed * self.difficulty.speed_scale
         x = GAME.SCREEN_WIDTH / 2 - self.ball_w / 2
         y = (self.FIELD_TOP + self.FIELD_BOTTOM) / 2 - self.ball_h / 2
         for i in range(missing):
-            delay = self.SERVE_DELAY + i * self.SERVE_STAGGER
-            self.balls.append(Ball(x, y, self.ball_w, self.ball_h,
-                                   self._level_speed(), serve_delay=delay))
-        self._roll_enemy_error()
+            delay = extra_delay + self.SERVE_DELAY + i * self.SERVE_STAGGER
+            self.balls.append(Ball(x, y, self.ball_w, self.ball_h, speed, serve_delay=delay))
 
     def _player_scores(self, ball):
         """The enemy missed: goal for the player, and maybe the level is won."""
@@ -391,8 +435,7 @@ class Pong(Scene):
         self.audio.play_goal()
 
         if self.goals_player >= self.goals_to_win:
-            self.match_state = self.VICTORY if self.level >= self.LEVEL_MAX else self.LEVEL_WON
-            self.paused = True
+            self._win_level()
         else:
             self._refill_balls()
 
@@ -410,30 +453,16 @@ class Pong(Scene):
         else:
             self._refill_balls()
 
-    def _update_survival_points(self, dt):
-        """Award one point for every POINT_EVERY seconds of play."""
-        self.point_timer += dt
-        while self.point_timer >= self.POINT_EVERY:
-            self.point_timer -= self.POINT_EVERY
-            self.points += 1
-
     # ------------------------------------------------------------------
     # Obstacles
     # ------------------------------------------------------------------
-    def _obstacle_count(self, level):
-        """Obstacles for a level: one more every two levels, capped."""
-        if level < self.OBSTACLE_START_LEVEL:
-            return 0
-        return min(self.OBSTACLE_MAX, 1 + (level - self.OBSTACLE_START_LEVEL) // 2)
-
-    def _generate_obstacles(self, level):
+    def _generate_obstacles(self, level, count):
         """Seeded procedural placement by rejection sampling.
 
         The same level always produces the same layout (reproducible and
         balanceable): each candidate is drawn at random, then rejected if it
         is too close to the serve point or to another obstacle.
         """
-        count = self._obstacle_count(level)
         if count == 0:
             return []
 
@@ -466,51 +495,6 @@ class Pong(Scene):
             obstacles.append(Obstacle(candidate, self.images.get("asteroid"),
                                       spin_speed=spin, angle_offset=rng.uniform(0, 360)))
         return obstacles
-
-    # ------------------------------------------------------------------
-    # Enemy AI
-    # ------------------------------------------------------------------
-    def _enemy_speed(self):
-        base = self.ENEMY_SPEED_BASE + self.ENEMY_SPEED_PER_LEVEL * self.level
-        return base * self.enemy_speed_mult
-
-    def _enemy_react_y(self):
-        """Field height above which the enemy starts chasing the ball."""
-        fraction = max(0.2, self.ENEMY_REACT_FRACTION_BASE
-                       - self.ENEMY_REACT_PER_LEVEL * self.level)
-        return self.FIELD_TOP + (self.FIELD_BOTTOM - self.FIELD_TOP) * fraction
-
-    def _roll_enemy_error(self):
-        """Roll the enemy's aim error for the current play."""
-        max_error = max(15, (self.ENEMY_ERROR_BASE
-                             - self.ENEMY_ERROR_PER_LEVEL * self.level)
-                        * self.enemy_error_mult)
-        self.enemy_aim_error = random.uniform(-max_error, max_error)
-
-    def _ball_for_enemy(self):
-        """The ball that will reach the enemy first (soonest, not nearest).
-
-        Returns None if no ball is heading toward the enemy.
-        """
-        best, best_time = None, float("inf")
-        for ball in self.balls:
-            arrival = ball.time_to_reach_y(self.enemy_bottom)
-            if arrival < best_time:
-                best, best_time = ball, arrival
-        return best
-
-    def _update_enemy(self, dt):
-        """Chase the incoming ball with limited speed and a fixed aim error;
-        drift back to the center when nothing is coming."""
-        target_ball = self._ball_for_enemy()
-        if target_ball is not None and target_ball.cy < self._enemy_react_y():
-            target = target_ball.cx - self.enemy_w / 2 + self.enemy_aim_error
-        else:
-            target = (self.enemy_min_x + self.enemy_max_x) / 2
-
-        max_step = self._enemy_speed() * dt
-        self.enemy_x += max(-max_step, min(max_step, target - self.enemy_x))
-        self.enemy_x = max(self.enemy_min_x, min(self.enemy_max_x, self.enemy_x))
 
     # ------------------------------------------------------------------
     # Physics
@@ -566,14 +550,17 @@ class Pong(Scene):
                 continue
 
             self._collide_walls(ball)
+            if self.blocker is not None:
+                self._collide_blocker(ball, prev_y)
 
             # A paddle only returns a ball whose edge crosses the paddle's face
             # THIS frame. Testing just "is it past the line" let a paddle
             # sliding under a ball that had already slipped by save it from behind.
             if (ball.vy < 0 and prev_y >= self.enemy_bottom > ball.y
-                    and self._overlaps_x(ball, self.enemy_x, self.enemy_w)):
+                    and self._overlaps_x(ball, self.enemy.x, self.enemy_w)):
                 ball.y = self.enemy_bottom
-                self._bounce_off_paddle(ball, self.enemy_x, self.enemy_w, upward=False)
+                self._bounce_off_paddle(ball, self.enemy.x, self.enemy_w,
+                                        upward=False, hitter=self.ENEMY)
             elif ball.y < self.FIELD_TOP:
                 self._player_scores(ball)
                 continue
@@ -581,7 +568,8 @@ class Pong(Scene):
             if (ball.vy > 0 and prev_y + ball.h <= self.paddle_y < ball.y + ball.h
                     and self._overlaps_x(ball, self.paddle_x, self.paddle_w)):
                 ball.y = self.paddle_y - ball.h
-                self._bounce_off_paddle(ball, self.paddle_x, self.paddle_w, upward=True)
+                self._bounce_off_paddle(ball, self.paddle_x, self.paddle_w,
+                                        upward=True, hitter=self.PLAYER)
             elif ball.y > self.FIELD_BOTTOM:
                 self._lose_life(ball)
                 continue
@@ -606,12 +594,37 @@ class Pong(Scene):
             return
         self.audio.play_hit()
 
-    def _bounce_off_paddle(self, ball, paddle_x, paddle_w, upward):
-        """Angular bounce off a paddle (computed by the Ball) plus its sound."""
-        ball.bounce_paddle(paddle_x, paddle_w, upward, self.MAX_BOUNCE_X)
-        self.audio.play("hit_player" if upward else "hit_enemy")
-        if upward:
-            self._roll_enemy_error()   # each return is a new play for the AI
+    def _collide_blocker(self, ball, prev_y):
+        """Bounce a ball off either face of the midfield blocker."""
+        blocker = self.blocker
+        if not self._overlaps_x(ball, blocker.x, blocker.w):
+            return
+        if ball.vy < 0 and prev_y >= blocker.bottom > ball.y:
+            ball.y = blocker.bottom          # blocked a shot: back to the player
+            upward = False
+        elif ball.vy > 0 and prev_y + ball.h <= blocker.top < ball.y + ball.h:
+            ball.y = blocker.top - ball.h    # deflected the enemy's return
+            upward = True
+        else:
+            return
+        self._bounce_off_paddle(ball, blocker.x, blocker.w, upward, hitter=self.BLOCKER)
+
+    def _bounce_off_paddle(self, ball, paddle_x, paddle_w, upward, hitter):
+        """Angular bounce off a paddle, rally speed-up, scoring and sound.
+
+        Every hit speeds the ball up a little, up to the rally's top speed.
+        A player's hit near the paddle's edge is also a smash: extra speed,
+        so aiming well is what beats the enemy.
+        """
+        hit = ball.bounce_paddle(paddle_x, paddle_w, upward, levels.MAX_BOUNCE_X)
+        factor = 1 + levels.RALLY_ACCEL
+        if hitter == self.PLAYER:
+            self.points += self.RETURN_POINTS
+            edge = (abs(hit) - levels.SMASH_FROM) / (1 - levels.SMASH_FROM)
+            if edge > 0:
+                factor += levels.SMASH_BOOST * edge
+        ball.accelerate(factor, ball.base_speed * levels.RALLY_MAX)
+        self.audio.play("hit_player" if hitter == self.PLAYER else "hit_enemy")
 
     def _collide_obstacles(self, ball):
         """Bounce a ball off obstacles along the axis of least penetration.
@@ -637,8 +650,30 @@ class Pong(Scene):
                 else:
                     ball.y, ball.vy = obstacle.bottom, abs(ball.vy)
 
+            self._unstick(ball, ball.cx - obstacle.rect.centerx)
+            # An asteroid bounce can't be predicted: the enemy has to read
+            # (and react to) the new course
+            self.enemy.forget(ball)
             self.audio.play("hit_obstacle")
             break   # one bounce per frame is enough
+
+    def _unstick(self, ball, side):
+        """Give a ball leaving an asteroid some sideways motion.
+
+        Without it, a ball moving straight up and down could bounce forever
+        between an asteroid and a paddle.
+
+        Args:
+            side: Which way to push it if needed (sign: negative = left).
+        """
+        speed = ball.speed
+        min_vx = speed * self.MIN_SIDEWAYS
+        if abs(ball.vx) >= min_vx:
+            return
+        if side == 0:
+            side = random.choice((-1, 1))
+        ball.vx = math.copysign(min_vx, side)
+        ball.vy = math.copysign(math.sqrt(speed * speed - min_vx * min_vx), ball.vy)
 
     # ------------------------------------------------------------------
     # Scene hooks
@@ -664,14 +699,15 @@ class Pong(Scene):
         if self.paused:
             return
         dt = min(self.director.dt, self.MAX_DT)
+        self.banner_time = max(0.0, self.banner_time - dt)
         self.starfield.update(dt)
         for obstacle in self.obstacles:
             obstacle.update(dt)
+        if self.blocker is not None:
+            self.blocker.update(dt)
         self._update_paddle(dt)
-        self._update_enemy(dt)
+        self.enemy.update(dt, self.balls)
         self._update_balls(dt)
-        if not self.paused:   # a goal this frame may have ended the level
-            self._update_survival_points(dt)
 
     def on_draw(self, screen):
         screen.blit(self.images["background"], (0, 0))
@@ -679,6 +715,8 @@ class Pong(Scene):
 
         for obstacle in self.obstacles:
             self._draw_obstacle(screen, obstacle)
+        if self.blocker is not None:
+            screen.blit(self.images["blocker"], (self.blocker.x, self.blocker.y))
 
         blink_on = (pygame.time.get_ticks() // self.BALL_BLINK_MS) % 2 == 0
         for ball in self.balls:
@@ -686,7 +724,7 @@ class Pong(Scene):
                 continue   # a ball about to be served blinks
             self._draw_ball_trail(screen, ball)
             screen.blit(self.images["ball"], (ball.x, ball.y))
-        screen.blit(self.images["paddle_top"], (self.enemy_x, self.enemy_y))
+        screen.blit(self.images["paddle_top"], (self.enemy.x, self.enemy_y))
         screen.blit(self.images["paddle"], (self.paddle_x, self.paddle_y))
 
         self._draw_hud(screen)
@@ -695,6 +733,9 @@ class Pong(Scene):
             self._draw_overlay(screen)
         elif self.paused:
             self._draw_pause(screen)
+        elif self.banner_time > 0:
+            fade = min(1.0, self.banner_time / self.BANNER_FADE)
+            self._draw_banner(screen, int(255 * fade))
 
     # ------------------------------------------------------------------
     # Drawing
@@ -736,9 +777,19 @@ class Pong(Scene):
         pygame.draw.rect(screen, tuple(c // 4 for c in neon), obstacle.rect, border_radius=6)
         pygame.draw.rect(screen, neon, obstacle.rect, width=3, border_radius=6)
 
+    def _draw_banner(self, screen, alpha=255):
+        """The level's number and name, centered."""
+        cx, cy = self.hud_pos["center"]
+        for surface, y in ((self.banner_title, cy - 40), (self.banner_name, cy + 20)):
+            surface.set_alpha(alpha)
+            screen.blit(surface, surface.get_rect(center=(cx, y)))
+
     def _draw_pause(self, screen):
         cx, cy = self.hud_pos["center"]
-        screen.blit(self.text_pause, self.text_pause.get_rect(center=(cx, cy)))
+        if self.banner_time > 0:
+            self._draw_banner(screen)   # the level hasn't started yet: show which one
+        else:
+            screen.blit(self.text_pause, self.text_pause.get_rect(center=(cx, cy)))
         screen.blit(self.text_pause_hint, self.text_pause_hint.get_rect(center=(cx, cy + 70)))
         screen.blit(self.text_control, self.text_control.get_rect(center=(cx, cy + 105)))
         if self.control == self.CONTROL_CAMERA:
@@ -770,7 +821,7 @@ class Pong(Scene):
             pygame.draw.line(screen, yellow, (x, rect.top), (x, rect.bottom), 3)
 
     def _draw_overlay(self, screen):
-        """Result screen: dimmed backdrop, title, final score and buttons."""
+        """Result screen: dimmed backdrop, title, final score, buttons and a note."""
         screen.blit(self.overlay_backdrop, (0, 0))
         cx, cy = self.hud_pos["center"]
 
@@ -783,6 +834,14 @@ class Pong(Scene):
 
         for button in self.overlay_buttons[self.match_state]:
             button.draw(screen)
+
+        note = None
+        if self.match_state == self.SECRET_FOUND:
+            note = self.text_secret_unlocked
+        elif self.match_state == self.VICTORY and self.show_secret_hint:
+            note = self.text_secret_hint
+        if note is not None:
+            screen.blit(note, note.get_rect(center=(cx, cy + 130)))
 
     def _heart_image(self, index):
         """Full or empty heart; the one just lost blinks for a moment."""
@@ -810,7 +869,8 @@ class Pong(Scene):
 
         screen.blit(self.label_level,
                     self.label_level.get_rect(midleft=self.hud_pos["level_label"]))
-        level = self._text("level", f"{self.level:02d}", self.font_hud, white)
+        value = "??" if self.level == levels.SECRET_LEVEL else f"{self.level:02d}"
+        level = self._text("level", value, self.font_hud, white)
         screen.blit(level, level.get_rect(midleft=self.hud_pos["level_value"]))
 
         for button in self.hud_buttons:

@@ -38,7 +38,12 @@
     "victory": "VICTORIA",
     "pause_hint": "ESPACIO PARA JUGAR",
     "control_hint": "CONTROL: {mode}",
-    "no_camera": "SIN CÁMARA: SE USA EL MOUSE"
+    "no_camera": "SIN CÁMARA: SE USA EL MOUSE",
+    "level_title": "NIVEL {n}",
+    "secret_level": "NIVEL SECRETO",
+    "secret_found": "¡SECRETO!",
+    "secret_unlocked": "DESBLOQUEASTE EL NIVEL SECRETO",
+    "secret_hint": "PISTA: GANA TODO SIN REINTENTAR"
   },
   "loading": {
     "text": "CARGANDO..."
@@ -78,5 +83,13 @@
     "easy": "FACIL",
     "normal": "NORMAL",
     "hard": "DIFICIL"
+  },
+  "levels": {
+    "warmup": "CALENTAMIENTO",
+    "asteroids": "ASTEROIDES",
+    "double": "DOBLE PELOTA",
+    "storm": "TORMENTA",
+    "chaos": "CAOS TOTAL",
+    "secret": "DOBLE DEFENSA"
   }
 }
