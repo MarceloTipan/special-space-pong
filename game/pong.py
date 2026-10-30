@@ -33,6 +33,8 @@ from config import FONTS, PATHS, UI, GAME
 class Pong(Scene):
     """The game scene: one match, played level by level."""
 
+    MODE = "campaign"   #: high score table this scene's results go to (see utils.highscores)
+
     # --- Match states ---
     PLAYING = "playing"
     LEVEL_WON = "level_won"
@@ -180,7 +182,7 @@ class Pong(Scene):
         self.lives_start = max(self.LIVES_MIN, min(self.LIVES_MAX, self.difficulty.lives))
 
         self._text_cache = {}    # HUD text, re-rendered only when it changes
-        self._trail_cache = {}   # trail dot surfaces, by (radius, alpha)
+        self._trail_cache = {}   # trail dot surfaces, by (radius, alpha, color)
 
         self._setup_geometry()
         self._setup_hud()
@@ -402,11 +404,17 @@ class Pong(Scene):
         # screen), so importing these at the top would be circular
         from scenes import highscores_screen, name_entry_screen
         from utils import highscores
-        if highscores.qualifies(self.points):
-            scene = name_entry_screen.NameEntry(self.director, self.points, self.level)
+        if highscores.qualifies(self.points, self.MODE):
+            scene = name_entry_screen.NameEntry(self.director, self.points, self.MODE,
+                                                **self._record_details())
         else:
-            scene = highscores_screen.Highscores(self.director, last_score=self.points)
+            scene = highscores_screen.Highscores(self.director, mode=self.MODE,
+                                                 last_score=self.points)
         self.director.change_scene(scene)
+
+    def _record_details(self):
+        """How far the player got, stored with a high score."""
+        return {"level": self.level}
 
     # ------------------------------------------------------------------
     # Balls and scoring
@@ -748,25 +756,28 @@ class Pong(Scene):
             self._text_cache[key] = cached
         return cached[1]
 
-    def _trail_dot(self, radius, alpha):
-        """A translucent trail dot, created once per (radius, alpha) and reused."""
-        dot = self._trail_cache.get((radius, alpha))
+    def _trail_dot(self, radius, alpha, color):
+        """A translucent trail dot, created once per (radius, alpha, color) and reused."""
+        key = (radius, alpha, color)
+        dot = self._trail_cache.get(key)
         if dot is None:
             dot = pygame.Surface((radius * 2, radius * 2), pygame.SRCALPHA)
-            pygame.draw.circle(dot, (*UI.COLORS["WHITE"], alpha), (radius, radius), radius)
-            self._trail_cache[(radius, alpha)] = dot
+            pygame.draw.circle(dot, (*color, alpha), (radius, radius), radius)
+            self._trail_cache[key] = dot
         return dot
 
-    def _draw_ball_trail(self, screen, ball):
+    def _draw_ball_trail(self, screen, ball, color=None):
         """Shrinking, fading dots behind the ball (older ones smaller and fainter)."""
         n = len(ball.trail)
         if n < 2:
             return
+        color = color or UI.COLORS["WHITE"]
         base = max(ball.w, ball.h) / 2
         for i, (tx, ty) in enumerate(ball.trail):
             frac = (i + 1) / n   # oldest -> newest
             radius = max(1, int(base * frac * 0.8))
-            screen.blit(self._trail_dot(radius, int(120 * frac)), (tx - radius, ty - radius))
+            dot = self._trail_dot(radius, int(120 * frac), tuple(color))
+            screen.blit(dot, (tx - radius, ty - radius))
 
     def _draw_obstacle(self, screen, obstacle):
         """Draw an asteroid sprite, or a neon block if there is no sprite."""

@@ -8,7 +8,7 @@ scores, settings) are a column of icon buttons. All text comes from i18n.
 import pygame
 
 from core import Scene
-from scenes import instruction_screen, credits_screen, loading_screen, settings_screen
+from scenes import instruction_screen, credits_screen, mode_select_screen, settings_screen
 from ui import TextButton
 from ui.icon_button import IconButton
 from config import FONTS, PATHS, UI, GAME
@@ -35,7 +35,7 @@ class Menu(Scene):
         cx = GAME.SCREEN_WIDTH // 2
         cy = GAME.SCREEN_HEIGHT // 2
         button_defs = [
-            (-20, "menu.start", self._go_to_loading, {"hover_color": UI.COLORS["YELLOW"]}),
+            (-20, "menu.start", self._go_to_mode_select, {"hover_color": UI.COLORS["YELLOW"]}),
             (30, "menu.exit", director.quit, {}),
         ]
         self.menu_buttons = [
@@ -74,8 +74,8 @@ class Menu(Scene):
     # ------------------------------------------------------------------
     # Button actions
     # ------------------------------------------------------------------
-    def _go_to_loading(self):
-        self.director.change_scene(loading_screen.LoadingScreen(self.director))
+    def _go_to_mode_select(self):
+        self.director.change_scene(mode_select_screen.ModeSelect(self.director))
 
     def _go_to_instructions(self):
         self.director.change_scene(instruction_screen.Instructions(self.director))

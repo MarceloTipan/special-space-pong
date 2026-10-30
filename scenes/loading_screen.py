@@ -20,9 +20,16 @@ class LoadingScreen(scene.Scene):
     BAR_HEIGHT = 14
     BAR_Y = int(GAME.SCREEN_HEIGHT * 0.78)
 
-    def __init__(self, director):
+    def __init__(self, director, scene_class=None):
+        """Build the loading screen.
+
+        Args:
+            scene_class: Game scene to load (Pong for the campaign,
+                Survival...). It must provide load_steps or build in one step.
+        """
         super().__init__(director)
         director.status = GAME.STATUS_LOADING
+        self.scene_class = scene_class or pong.Pong
 
         # Background loaded and scaled once
         self.background = pygame.transform.scale(
@@ -39,15 +46,15 @@ class LoadingScreen(scene.Scene):
     def on_enter(self):
         """Prepare the game's step-loader generator."""
         self.start_ticks = pygame.time.get_ticks()
-        if hasattr(pong.Pong, "load_steps"):
-            self.loader = pong.Pong.load_steps(self.director)
+        if hasattr(self.scene_class, "load_steps"):
+            self.loader = self.scene_class.load_steps(self.director)
         else:
             self.loader = self._single_step_loader()
 
     def _single_step_loader(self):
-        """Fallback: build Pong in a single step."""
+        """Fallback: build the scene in a single step."""
         yield 0.1
-        game_scene = pong.Pong(self.director)
+        game_scene = self.scene_class(self.director)
         yield 0.95
         return game_scene
 

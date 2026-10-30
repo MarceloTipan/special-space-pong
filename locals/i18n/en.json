@@ -91,5 +91,16 @@
     "storm": "STORM",
     "chaos": "TOTAL CHAOS",
     "secret": "DOUBLE DEFENSE"
-  }
+  },
+  "modes": {
+      "title": "GAME MODE",
+      "campaign": "CAMPAIGN",
+      "campaign_hint": "5 LEVELS AGAINST AN OPPONENT",
+      "survival": "SURVIVAL",
+      "survival_hint": "NO OPPONENT: ONLY THE RED BALL COSTS LIVES"
+    },
+    "survival": {
+      "banner_hint": "ONLY THE RED BALL COSTS LIVES",
+      "result": "POINTS {points}   TIME {time}"
+    }
 }
