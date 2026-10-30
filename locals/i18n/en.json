@@ -38,7 +38,12 @@
     "victory": "VICTORY",
     "pause_hint": "SPACE TO PLAY",
     "control_hint": "CONTROL: {mode}",
-    "no_camera": "NO CAMERA: USE ARROW KEYS"
+    "no_camera": "NO CAMERA: USE ARROW KEYS",
+    "level_title": "LEVEL {n}",
+    "secret_level": "SECRET LEVEL",
+    "secret_found": "SECRET!",
+    "secret_unlocked": "YOU UNLOCKED THE SECRET LEVEL",
+    "secret_hint": "HINT: WIN IT ALL WITHOUT RETRYING"
   },
   "loading": {
     "text": "LOADING..."
@@ -78,5 +83,13 @@
     "easy": "EASY",
     "normal": "NORMAL",
     "hard": "HARD"
+  },
+  "levels": {
+    "warmup": "WARM-UP",
+    "asteroids": "ASTEROIDS",
+    "double": "DOUBLE BALL",
+    "storm": "STORM",
+    "chaos": "TOTAL CHAOS",
+    "secret": "DOUBLE DEFENSE"
   }
 }

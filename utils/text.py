@@ -1,5 +1,9 @@
 """Text helpers shared by several screens."""
 
+from functools import lru_cache
+
+import pygame
+
 
 def wrap_text(text, font, max_width):
     """Split text into lines that fit within max_width pixels.
@@ -26,3 +30,32 @@ def wrap_text(text, font, max_width):
     if current:
         lines.append(current)
     return lines
+
+
+@lru_cache(maxsize=None)
+def _font(path, size):
+    return pygame.font.Font(path, size)
+
+
+def render_fit(font_path, size, text, color, max_width):
+    """Render text at the largest size, up to size, that fits max_width.
+
+    The size steps down in multiples of 8 so pixel fonts (like Press Start
+    2P, drawn on an 8 px grid) stay crisp instead of being scaled blurry.
+
+    Args:
+        font_path: Path of the font file.
+        size: Preferred size.
+        text: Text to render.
+        color: Text color.
+        max_width: Maximum width, in pixels.
+
+    Returns:
+        The rendered Surface.
+    """
+    font_path = str(font_path)
+    while True:
+        font = _font(font_path, size)
+        if font.size(text)[0] <= max_width or size <= 8:
+            return font.render(text, True, color)
+        size = (size - 1) // 8 * 8
