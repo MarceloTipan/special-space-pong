@@ -47,9 +47,14 @@ class Starfield:
                     star[1] -= self.height
                     star[0] = self.rng.uniform(0, self.width)
 
-    def draw(self, screen):
-        for stars, (_speed, radius, color) in zip(self.layers, self.meta):
+    def draw(self, screen, shift=0.0):
+        """Draw the stars, optionally shifted sideways by `shift` px for a
+        horizontal parallax: near layers shift more than far ones."""
+        count = len(self.layers)
+        for i, (stars, (_speed, radius, color)) in enumerate(zip(self.layers, self.meta)):
+            dx = shift * (i + 1) / count
             for x, y in stars:
+                x = (x - dx) % self.width
                 if radius <= 1:
                     screen.set_at((int(x), int(y)), color)
                 else:

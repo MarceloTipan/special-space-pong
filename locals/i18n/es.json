@@ -8,11 +8,20 @@
   },
   "instructions": {
     "title": "COMO JUGAR",
-    "back": "VOLVER",
-    "line_move": "Mueve la raqueta con tu mano frente a la camara",
-    "line_goal": "Golpea la pelota y no dejes que pase",
-    "line_lives": "Tienes 3 vidas, el juego sube de dificultad",
-    "line_back": "Presiona ESC para volver al menu"
+    "campaign_title": "NIVELES",
+    "campaign_text": "Gana 5 niveles contra un rival. Cada uno suma algo nuevo: asteroides, más pelotas... y hay un nivel secreto.",
+    "edge_title": "TIRO DE BORDE",
+    "edge_text": "Golpea con la orilla de la raqueta: la pelota sale en ángulo y más rápida, y al rival le cuesta devolverla.",
+    "survival_title": "SUPERVIVENCIA",
+    "survival_text": "Sin rival: devuelve todas las pelotas. Solo la roja quita vidas, y cada cierto tiempo pasa a otra. Encadena golpes para subir el combo.",
+    "controls_title": "CONTROLES",
+    "controls_text": "Juega con las flechas, el mouse o tu mano frente a la cámara. Elígelo en Ajustes.",
+    "keys_title": "TECLAS",
+    "keys_text": "Pausa cuando quieras y vuelve al menú en cualquier momento.",
+    "space": "ESPACIO",
+    "key_pause": "PAUSA",
+    "key_exit": "SALIR",
+    "goal": "¡GOL!"
   },
   "credits": {
     "title": "CREDITOS",
