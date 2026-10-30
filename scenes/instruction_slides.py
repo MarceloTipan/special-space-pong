@@ -44,6 +44,8 @@ class Page:
 
     TITLE_KEY = None   #: i18n keys, set by each page
     TEXT_KEY = None
+    NAME = None        #: short id, used for file names (tools/record_demos.py)
+    LOOP_SECONDS = 4.0 #: length of one loop of the demo, for recordings
 
     def __init__(self, sprites, fonts):
         self.sprites = sprites
@@ -175,6 +177,8 @@ class _Rally:
 class CampaignPage(Page):
     """A match in miniature: two paddles, a rally, a goal now and then."""
 
+    NAME = "campaign"
+    LOOP_SECONDS = 9.0
     TITLE_KEY = "instructions.campaign_title"
     TEXT_KEY = "instructions.campaign_text"
     MISS_EVERY = 3   #: the top paddle lets every third ball through
@@ -245,6 +249,8 @@ class EdgeShotPage(Page):
     """Scripted loop: the ball meets the edge of the paddle and shoots off
     at an angle; the top paddle lunges and doesn't make it."""
 
+    NAME = "edge_shot"
+    LOOP_SECONDS = 3.6
     TITLE_KEY = "instructions.edge_title"
     TEXT_KEY = "instructions.edge_text"
     LOOP = 3.6
@@ -298,6 +304,8 @@ class SurvivalPage(Page):
     """Balls bouncing under a wall; one red, handing its color around; the
     combo climbing with every return."""
 
+    NAME = "survival"
+    LOOP_SECONDS = 7.0
     TITLE_KEY = "instructions.survival_title"
     TEXT_KEY = "instructions.survival_text"
     SWITCH_EVERY = 3.5
@@ -360,6 +368,8 @@ class SurvivalPage(Page):
 class ControlsPage(Page):
     """Three panels: arrow keys, mouse and hand, each moving a paddle."""
 
+    NAME = "controls"
+    LOOP_SECONDS = 3.7
     TITLE_KEY = "instructions.controls_title"
     TEXT_KEY = "instructions.controls_text"
     CONTROLS = ("keyboard", "mouse", "camera")
@@ -427,6 +437,8 @@ class ControlsPage(Page):
 class KeysPage(Page):
     """SPACE pauses, ESC goes back: two keys pressed in turn."""
 
+    NAME = "keys"
+    LOOP_SECONDS = 4.0
     TITLE_KEY = "instructions.keys_title"
     TEXT_KEY = "instructions.keys_text"
 
