@@ -1,58 +1,62 @@
-"""Instructions screen.
+"""Instructions screen: an animated carousel of how to play.
 
-Shows the game instructions. Each i18n line is word-wrapped automatically
-to fit the screen width.
+Five pages (campaign, edge shots, survival, controls, keys), each a small
+looping demo drawn with the game's sprites, sliding over a parallax star
+field. Pages advance on their own; the player can also use the arrows,
+the dots, LEFT/RIGHT or drag them.
 """
 
 import pygame
 
+from game.starfield import Starfield
 from scenes.static_screen import StaticScreen
+from scenes.instruction_slides import build_pages
+from ui.carousel import Carousel
 from utils.i18n import t
-from utils.text import wrap_text
 from config import FONTS, PATHS, UI, GAME
 
 
 class Instructions(StaticScreen):
-    """Game instructions screen."""
+    """How to play, as a carousel."""
 
     BACKGROUND_PATH = PATHS.IMAGE_PATH_INSTRUCTIONS
     STATUS = GAME.STATUS_INSTRUCTIONS
 
-    TEXT_MARGIN = 0.08   #: side margin as a fraction of the width
-    LINE_HEIGHT = 45
-    PARAGRAPH_GAP = 14   #: extra space between separate instructions
+    TITLE_Y = 0.07        #: rows as a fraction of the screen height
+    CAROUSEL_TOP = 0.13
+    CAROUSEL_BOTTOM = 0.82
+    DOTS_Y = 0.86
+    SIDE_MARGIN = 0.09    #: leaves room for the < > arrows
+    PARALLAX = 0.15       #: how much the stars shift with the pages
 
     def __init__(self, director):
         super().__init__(director)
-
         w, h = GAME.SCREEN_WIDTH, GAME.SCREEN_HEIGHT
-        cx = w // 2
-        max_width = int(w * (1 - 2 * self.TEXT_MARGIN))
 
         font_title = pygame.font.Font(str(PATHS.FONT_PATH_ARCADE), FONTS.LARGE)
-        font_text = pygame.font.Font(str(PATHS.FONT_PATH_ARCADE), FONTS.MEDIUM)
+        self.title = font_title.render(t("instructions.title"), True, UI.COLORS["YELLOW"])
+        self.title_rect = self.title.get_rect(center=(w // 2, int(h * self.TITLE_Y)))
 
-        self.rendered = []
+        self.starfield = Starfield(w, h, seed=7)
+        margin = int(w * self.SIDE_MARGIN)
+        area = pygame.Rect(margin, int(h * self.CAROUSEL_TOP), w - 2 * margin,
+                           int(h * (self.CAROUSEL_BOTTOM - self.CAROUSEL_TOP)))
+        self.carousel = Carousel(
+            build_pages(), area, dots_y=int(h * self.DOTS_Y),
+            colors={"active": UI.COLORS["YELLOW"], "idle": (70, 90, 120),
+                    "accent": (80, 200, 255)},
+            audio=self.audio)
 
-        title = font_title.render(t("instructions.title"), True, UI.COLORS["YELLOW"])
-        self.rendered.append((title, title.get_rect(center=(cx, int(h * 0.12)))))
+    def on_event(self, event):
+        super().on_event(event)
+        self.carousel.handle_event(event)
 
-        instruction_keys = [
-            "instructions.line_move",
-            "instructions.line_goal",
-            "instructions.line_lives",
-            "instructions.line_back",
-        ]
-
-        # Each instruction is wrapped into as many lines as needed
-        y = int(h * 0.24)
-        for key in instruction_keys:
-            for line in wrap_text(t(key), font_text, max_width):
-                surface = font_text.render(line, True, UI.COLORS["WHITE"])
-                self.rendered.append((surface, surface.get_rect(center=(cx, y))))
-                y += self.LINE_HEIGHT
-            y += self.PARAGRAPH_GAP
+    def on_update(self):
+        dt = min(self.director.dt, 0.05)
+        self.starfield.update(dt)
+        self.carousel.update(dt)
 
     def draw_content(self, screen):
-        for surface, rect in self.rendered:
-            screen.blit(surface, rect)
+        self.starfield.draw(screen, shift=self.carousel.offset * self.PARALLAX)
+        screen.blit(self.title, self.title_rect)
+        self.carousel.draw(screen)

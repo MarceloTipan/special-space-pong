@@ -8,11 +8,20 @@
   },
   "instructions": {
     "title": "HOW TO PLAY",
-    "back": "BACK",
-    "line_move": "Move the paddle with your hand in front of the camera",
-    "line_goal": "Hit the ball and don't let it pass",
-    "line_lives": "You have 3 lives, difficulty increases over time",
-    "line_back": "Press ESC to return to the menu"
+    "campaign_title": "CAMPAIGN",
+    "campaign_text": "Win 5 levels against an opponent. Each one adds something new: asteroids, more balls... and there is a secret level.",
+    "edge_title": "EDGE SHOT",
+    "edge_text": "Hit the ball with the edge of the paddle: it flies off at an angle and faster, and the opponent struggles to return it.",
+    "survival_title": "SURVIVAL",
+    "survival_text": "No opponent: return every ball. Only the red one costs lives, and every so often it passes to another. Chain hits to raise the combo.",
+    "controls_title": "CONTROLS",
+    "controls_text": "Play with the arrow keys, the mouse or your hand in front of the camera. Choose it in Settings.",
+    "keys_title": "KEYS",
+    "keys_text": "Pause whenever you want and go back to the menu at any time.",
+    "space": "SPACE",
+    "key_pause": "PAUSE",
+    "key_exit": "EXIT",
+    "goal": "GOAL!"
   },
   "credits": {
     "title": "CREDITS",
