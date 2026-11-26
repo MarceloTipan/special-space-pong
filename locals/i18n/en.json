@@ -86,7 +86,8 @@
   "name_entry": {
     "title": "NEW RECORD",
     "score": "SCORE: {points}",
-    "hint": "ARROWS TO SELECT - ENTER TO SAVE"
+    "hint": "TAP THE ARROWS OR USE THE KEYS",
+    "save": "SAVE"
   },
   "difficulty": {
     "easy": "EASY",

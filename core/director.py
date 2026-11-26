@@ -4,7 +4,12 @@ The whole game is 2D pygame. The Director owns the single Audio instance
 (director.audio) and exposes director.dt (seconds since the last frame)
 for frame-rate-independent physics. Continuous keyboard state is read in
 each scene's on_update.
+
+The loop is a coroutine so the same code runs on desktop and in the
+browser (pygbag): there, each frame must hand control back to the page.
 """
+
+import asyncio
 
 import pygame
 from pygame.locals import DOUBLEBUF, FULLSCREEN, SCALED
@@ -12,6 +17,7 @@ from pygame.locals import DOUBLEBUF, FULLSCREEN, SCALED
 from config import GAME, PATHS
 from utils import settings
 from utils.audio import Audio
+from utils.runtime import WEB
 
 
 class Director:
@@ -61,7 +67,7 @@ class Director:
     # ------------------------------------------------------------------
     # Main loop
     # ------------------------------------------------------------------
-    def loop(self):
+    async def loop(self):
         """Run the game until quit is requested."""
         while not self.quit_flag:
             self.dt = self.clock.tick(GAME.FPS) / 1000.0
@@ -77,6 +83,9 @@ class Director:
             self.scene.on_draw(self.screen)
 
             pygame.display.flip()
+            # Let the browser draw the frame and handle input (on desktop
+            # this costs nothing). Must stay 0: the clock already paces frames
+            await asyncio.sleep(0)
 
     # ------------------------------------------------------------------
     # Scene switching
@@ -89,6 +98,11 @@ class Director:
         scene.on_enter()
 
     def _compute_flags(self):
+        if WEB:
+            # The page scales the canvas and maps the mouse itself; SCALED on
+            # top of that scales twice and puts the mouse out of place.
+            # Fullscreen is the page's (or itch.io's) button
+            return 0
         # SCALED: the game is written at the logical GAME.SCREEN_SIZE and
         # pygame scales the window to fit any monitor (mouse included)
         flags = DOUBLEBUF | SCALED
@@ -124,5 +138,6 @@ class Director:
             self.audio.stop_music()
 
     def quit(self):
-        """Request the game to close."""
-        self.quit_flag = True
+        """Request the game to close (in the browser there is nothing to close)."""
+        if not WEB:
+            self.quit_flag = True

@@ -1,6 +1,7 @@
 """Persistent user settings (volume, language, display, difficulty, controls).
 
-Stored in settings.json at the project root. Usage:
+Stored in settings.json at the project root (in the browser, in its
+local storage; see utils.storage). Usage:
 
     from utils import settings
 
@@ -9,8 +10,9 @@ Stored in settings.json at the project root. Usage:
     settings.set("volume", 0.5)     # write (saved automatically)
 """
 
-import json
 from config import PATHS
+from utils import storage
+from utils.runtime import CAMERA_SUPPORTED
 
 SETTINGS_FILE = PATHS.SETTINGS_FILE
 
@@ -31,19 +33,17 @@ def load():
     """Load settings.json, falling back to defaults if missing or corrupt."""
     global _data
     _data = dict(DEFAULTS)
-    try:
-        with open(SETTINGS_FILE, encoding="utf-8") as f:
-            stored = json.load(f)
+    stored = storage.load(SETTINGS_FILE, {})
+    if isinstance(stored, dict):
         # Only accept known keys (ignores leftovers from older versions)
         _data.update({k: v for k, v in stored.items() if k in DEFAULTS})
-    except (FileNotFoundError, json.JSONDecodeError):
-        pass
+    if _data["control"] == "camera" and not CAMERA_SUPPORTED:
+        _data["control"] = "mouse"   # the browser build has no camera control
 
 
 def save():
     """Write the current settings to disk."""
-    with open(SETTINGS_FILE, "w", encoding="utf-8") as f:
-        json.dump(_data, f, indent=2)
+    storage.save(SETTINGS_FILE, _data)
 
 
 def get(key):

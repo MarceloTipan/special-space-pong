@@ -23,7 +23,7 @@ class PathConfig:
     CREDITS_FILE = LOCALS_DIR / "credits.json"
 
     #: Font files
-    FONT_PATH_ARCADE = FONT_DIR / "PressStart2P-Regular.TTF"
+    FONT_PATH_ARCADE = FONT_DIR / "PressStart2P-Regular.ttf"
     FONT_PATH_JOYSTIX = FONT_DIR / "joystix monospace.otf"
 
     #: Image files
@@ -55,11 +55,11 @@ class PathConfig:
     MUSIC_PATH_CREDITS = SOUND_DIR / "menu" / "credits_song.ogg"
     MUSIC_PATH_GAME = SOUND_DIR / "menu" / "game_song.ogg"
 
-    SOUND_PATH_HOVER = SOUND_DIR / "button" / "hover_button.mp3"
-    SOUND_PATH_CLIC= SOUND_DIR / "button" / "clic_button.wav"
+    SOUND_PATH_HOVER = SOUND_DIR / "button" / "hover_button.ogg"
+    SOUND_PATH_CLIC= SOUND_DIR / "button" / "clic_button.ogg"
 
-    SOUND_PATH_ERROR = SOUND_DIR / "game" / "error.mp3"
-    SOUND_PATH_GOAL = SOUND_DIR / "game" / "error.mp3"
+    SOUND_PATH_ERROR = SOUND_DIR / "game" / "error.ogg"
+    SOUND_PATH_GOAL = SOUND_DIR / "game" / "error.ogg"
 
     SOUND_PATH_HIT_ENEMY_1 = SOUND_DIR / "game" / "hit_enemy_1.ogg"
     SOUND_PATH_HIT_ENEMY_2 = SOUND_DIR / "game" / "hit_enemy_2.ogg"
@@ -68,8 +68,8 @@ class PathConfig:
 
     SOUND_PATH_HIT = SOUND_DIR / "game" / "hit_enemy_2.ogg"
 
-    SOUND_PATH_HIT_PLAYER = SOUND_DIR / "button" / "hover_button.mp3"
-    SOUND_PATH_HIT_WALL = SOUND_DIR / "button" / "clic_button.wav"
+    SOUND_PATH_HIT_PLAYER = SOUND_DIR / "button" / "hover_button.ogg"
+    SOUND_PATH_HIT_WALL = SOUND_DIR / "button" / "clic_button.ogg"
     SOUND_PATH_HIT_OBSTACLE = SOUND_DIR / "game" / "hit_enemy_3.ogg"
 
-    SOUND_PATH_CHIP = SOUND_DIR / "button" / "hover_button.mp3"
+    SOUND_PATH_CHIP = SOUND_DIR / "button" / "hover_button.ogg"
