@@ -86,7 +86,8 @@
   "name_entry": {
     "title": "NUEVO RECORD",
     "score": "PUNTAJE: {points}",
-    "hint": "FLECHAS PARA ELEGIR - ENTER PARA GUARDAR"
+    "hint": "TOCA LAS FLECHAS O USA EL TECLADO", 
+    "save": "GUARDAR"
   },
   "difficulty": {
     "easy": "FACIL",

@@ -17,6 +17,20 @@ python -m pip install -r requirements-dev.txt
 python tools/record_demos.py
 python tools/record_demos.py --width 360 --fps 12 --lang es
 
+# test localhost
+
+pygbag .    # deploy local
+
+pygbag --build .
+cd build\web
+python -m http.server 8080
+
+winget install --id Cloudflare.cloudflared
+cloudflared tunnel --url http://localhost:8080
+cloudflared tunnel --url http://127.0.0.1:8080
+
+ngrok http 8080 (error)
+
 # test
 
 python -m pytest

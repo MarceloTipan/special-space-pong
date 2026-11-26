@@ -17,7 +17,7 @@ import random
 import pygame
 
 from core import Scene
-from game import levels, motion
+from game import levels
 from game.ball import Ball
 from game.enemy import Blocker, Enemy
 from game.obstacle import Obstacle
@@ -26,6 +26,7 @@ from ui import TextButton
 from ui.pause_button import PauseButton
 from utils import settings
 from utils.i18n import t
+from utils.runtime import CAMERA_SUPPORTED
 from utils.text import render_fit
 from config import FONTS, PATHS, UI, GAME
 
@@ -141,9 +142,12 @@ class Pong(Scene):
 
     @classmethod
     def _make_detector(cls):
-        """Open the camera only if the camera control is selected."""
-        if settings.get("control") != cls.CONTROL_CAMERA:
+        """Open the camera only if the camera control is selected (and possible)."""
+        if settings.get("control") != cls.CONTROL_CAMERA or not CAMERA_SUPPORTED:
             return None
+        # Imported here: OpenCV is heavy, only needed for the camera, and not
+        # available at all in the browser build
+        from game import motion
         return motion.MotionController(mirror=not settings.get("camera_invert"))
 
     @staticmethod

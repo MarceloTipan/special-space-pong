@@ -1,0 +1,141 @@
+# Continuous integration and delivery for special-space-pong.
+#
+#   every push and pull request -> run the tests
+#   push to main                -> build the web version and publish it on GitHub Pages
+#                                  (plus a zip ready for itch.io, as a downloadable artifact)
+#   version tag (v1.0.0, ...)   -> also build the Windows .exe (with the camera control)
+#                                  and attach both builds to a GitHub Release
+#
+# Run it by hand from the Actions tab too ("Run workflow"), e.g. to try the .exe build.
+
+name: CI/CD
+
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+  pull_request:
+  workflow_dispatch:
+
+env:
+  PYTHON_VERSION: "3.14.6"
+  # pygame without a screen or sound card (GitHub's machines have neither)
+  SDL_VIDEODRIVER: dummy
+  SDL_AUDIODRIVER: dummy
+
+jobs:
+  test:
+    name: Tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+      - name: System libraries needed by OpenCV
+        run: sudo apt-get update && sudo apt-get install -y libgl1
+      - name: Install dependencies
+        run: pip install -r requirements-dev.txt
+      - name: Run the tests
+        run: pytest
+
+  web:
+    name: Web build (pygbag)
+    needs: test
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      # With ffmpeg available, pygbag converts the audio to a lighter version
+      # for the web (the repo keeps the full-quality files for desktop)
+      - name: Install ffmpeg
+        run: sudo apt-get update && sudo apt-get install -y ffmpeg
+      - name: Install pygbag
+        run: pip install pygbag==0.9.3
+      - name: Build
+        run: python -m pygbag --build --archive .
+      - name: Upload the site for GitHub Pages
+        uses: actions/upload-pages-artifact@v5
+        with:
+          path: build/web
+      - name: Upload the itch.io zip
+        uses: actions/upload-artifact@v4
+        with:
+          name: special-space-pong-web
+          path: build/web.zip
+
+  deploy:
+    name: Publish on GitHub Pages
+    needs: web
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write      # to deploy to Pages
+      id-token: write   # to prove the deployment comes from this workflow
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    concurrency:
+      group: pages
+      cancel-in-progress: false
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
+
+  windows:
+    name: Windows build (.exe)
+    needs: test
+    if: startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_dispatch'
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+      - name: Install dependencies
+        run: pip install -r requirements.txt pyinstaller
+      - name: Build the executable
+        # One folder (not one file): starts faster and antivirus programs
+        # flag it less. Assets, translations and credits go next to the code,
+        # at the same relative paths the game looks for them
+        shell: pwsh
+        run: |
+          $data = @("--add-data", "assets;assets", "--add-data", "locals;locals")
+          if (Test-Path credits.json) { $data += @("--add-data", "credits.json;.") }
+          if (Test-Path data) { $data += @("--add-data", "data;data") }
+          pyinstaller --noconfirm --windowed --name SpecialSpacePong `
+            --collect-submodules scenes --collect-submodules game --collect-submodules ui `
+            @data main.py
+      - name: Zip it
+        run: Compress-Archive -Path dist/SpecialSpacePong -DestinationPath SpecialSpacePong-windows.zip
+      - name: Upload the Windows zip
+        uses: actions/upload-artifact@v4
+        with:
+          name: special-space-pong-windows
+          path: SpecialSpacePong-windows.zip
+
+  release:
+    name: GitHub Release
+    needs: [web, windows]
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write   # to create the release
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: special-space-pong-*
+          path: dist
+          merge-multiple: true
+      - name: Create the release with both builds
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            dist/SpecialSpacePong-windows.zip
+            dist/web.zip
+          generate_release_notes: true

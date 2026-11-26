@@ -14,7 +14,14 @@ import sys
 import threading
 import time
 
-import cv2
+from utils.runtime import CAMERA_SUPPORTED
+
+if CAMERA_SUPPORTED:
+    import cv2
+else:
+    cv2 = None
+
+# import cv2
 
 
 class MotionController:
@@ -36,6 +43,11 @@ class MotionController:
                 right moves the paddle right. Turn it off for cameras whose
                 driver already mirrors the image.
         """
+        if not CAMERA_SUPPORTED:
+            raise RuntimeError(
+                "MotionController no está disponible en navegador"
+            )
+            
         self.mirror = mirror
         self.hand_x = None    # 0-1 across the field; None until the first detection
         self.raw_x = None     # last detection in image coordinates (0-1), for the preview

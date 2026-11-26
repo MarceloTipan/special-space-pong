@@ -11,16 +11,12 @@ Each entry also stores how far the player got: the level reached in the
 campaign, the seconds survived in survival.
 """
 
-import json
 from datetime import date
-# from pathlib import Path
 
 from config import PATHS
-
+from utils import storage
 
 SCORES_FILE = PATHS.HIGHSCORES_FILE
-
-# SCORES_FILE = Path(__file__).resolve().parent.parent / "highscores.json"
 
 CAMPAIGN = "campaign"
 SURVIVAL = "survival"
@@ -37,20 +33,17 @@ def _load():
     global _scores
     if _scores is not None:
         return _scores
-    try:
-        with open(SCORES_FILE, encoding="utf-8") as f:
-            stored = json.load(f)
-    except (FileNotFoundError, json.JSONDecodeError):
-        stored = {}
+    stored = storage.load(SCORES_FILE, {})
     if isinstance(stored, list):
         stored = {CAMPAIGN: stored}   # older versions had a single campaign table
+    if not isinstance(stored, dict):
+        stored = {}
     _scores = {mode: list(stored.get(mode, [])) for mode in MODES}
     return _scores
 
 
 def _save():
-    with open(SCORES_FILE, "w", encoding="utf-8") as f:
-        json.dump(_scores, f, ensure_ascii=False, indent=2)
+    storage.save(SCORES_FILE, _scores)
 
 
 def get_all(mode=CAMPAIGN):

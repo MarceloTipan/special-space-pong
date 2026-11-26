@@ -13,6 +13,7 @@ from ui import TextButton
 from ui.icon_button import IconButton
 from config import FONTS, PATHS, UI, GAME
 from utils.i18n import t
+from utils.runtime import WEB
 
 
 class Menu(Scene):
@@ -36,8 +37,9 @@ class Menu(Scene):
         cy = GAME.SCREEN_HEIGHT // 2
         button_defs = [
             (-20, "menu.start", self._go_to_mode_select, {"hover_color": UI.COLORS["YELLOW"]}),
-            (30, "menu.exit", director.quit, {}),
         ]
+        if not WEB:   # a browser tab can't be closed by the game
+            button_defs.append((30, "menu.exit", director.quit, {}))
         self.menu_buttons = [
             TextButton(
                 pos=(cx, cy + offset),

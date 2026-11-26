@@ -12,6 +12,7 @@ from ui.slider import Slider
 from ui.toggle import Toggle
 from utils import settings
 from utils.i18n import t, set_language, available_languages, get_language
+from utils.runtime import CAMERA_SUPPORTED, WEB
 from config import FONTS, PATHS, UI, GAME
 
 
@@ -22,7 +23,8 @@ class Settings(StaticScreen):
     STATUS = GAME.STATUS_SETTINGS
 
     DIFFICULTIES = ["easy", "normal", "hard"]
-    CONTROLS = ["camera", "mouse", "keyboard"]
+    #: The camera needs the desktop version (see utils.runtime)
+    CONTROLS = ["camera", "mouse", "keyboard"] if CAMERA_SUPPORTED else ["mouse", "keyboard"]
 
     #: Layout rows as a fraction of the screen height.
     ROWS = {
@@ -79,8 +81,9 @@ class Settings(StaticScreen):
                            t(f"control.{control}"),
                            lambda step: self._cycle("control", self.CONTROLS, step))
 
-        self._add_toggle("fullscreen", "settings.fullscreen", "fullscreen",
-                         self._toggle_fullscreen)
+        if not WEB:   # in the browser, the page handles fullscreen
+            self._add_toggle("fullscreen", "settings.fullscreen", "fullscreen",
+                             self._toggle_fullscreen)
         # Only relevant (and only shown) when playing with the camera
         if control == "camera":
             self._add_toggle("camera_invert", "settings.camera_invert", "camera_invert",
